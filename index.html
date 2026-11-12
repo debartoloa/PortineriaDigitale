@@ -2018,8 +2018,8 @@
                 <button type="button" class="btn-action btn-action-primary" id="btnToggleCamera" onclick="toggleCamera()">
                   📸 Attiva Fotocamera Scanner
                 </button>
-                <button type="button" class="btn-action btn-action-secondary" onclick="triggerManualScanCapture()" title="Acquisisci subito il documento con bip e caricamento dati">
-                  ⚡ Scansiona Ora (Bip)
+                <button type="button" class="btn-action btn-action-secondary" onclick="triggerManualScanCapture()" title="Simula una scansione con dati di prova">
+                  🧪 Test Demo CIE (Simulazione)
                 </button>
               </div>
             </div>
@@ -3953,7 +3953,6 @@
       }
 
       let lastDetectTime = 0;
-      let scanFramesCount = 0;
 
       async function scanFrame(timestamp) {
         if (!isCameraScanningActive || !mediaStream) return;
@@ -3961,49 +3960,21 @@
         // Process a video frame every 120ms
         if (timestamp - lastDetectTime > 120 && video.readyState >= 2) {
           lastDetectTime = timestamp;
-          scanFramesCount++;
 
-          // 1. Native Web BarcodeDetector API (Supports Code 39, Code 128, QR)
+          // Native Web BarcodeDetector API (Detects real Code 39 barcode on back of CIE)
           if (barcodeDetector) {
             try {
               const barcodes = await barcodeDetector.detect(video);
               if (barcodes && barcodes.length > 0) {
                 const detectedVal = barcodes[0].rawValue;
-                handleDetectedBarcodeOrDocument(detectedVal, 'camera_barcode');
-                return;
+                if (detectedVal && detectedVal.trim()) {
+                  handleDetectedBarcodeOrDocument(detectedVal, 'camera_barcode');
+                  return;
+                }
               }
             } catch (err) {
               // Frame dropped, proceed to next
             }
-          }
-
-          // 2. Optical Contrast & Scanline Analysis for CIE Card Back
-          try {
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            canvas.width = 320;
-            canvas.height = 180;
-            ctx.drawImage(video, 0, 0, 320, 180);
-            const imgData = ctx.getImageData(40, 40, 240, 100);
-
-            let darkTransitions = 0;
-            const data = imgData.data;
-            let prevLum = 128;
-            for (let x = 0; x < 240; x += 3) {
-              const idx = (50 * 240 + x) * 4;
-              const lum = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
-              if (Math.abs(lum - prevLum) > 55) {
-                darkTransitions++;
-              }
-              prevLum = lum;
-            }
-
-            // If a distinctive barcode stripe or MRZ band is aligned steadily in the viewport
-            if (darkTransitions >= 20 && scanFramesCount > 10) {
-              handleDetectedBarcodeOrDocument('CIE_OPTICAL_AUTODETECT', 'camera_optical');
-              return;
-            }
-          } catch (e) {
-            // Ignore canvas size glitches
           }
         }
 
@@ -4015,6 +3986,25 @@
 
     function handleDetectedBarcodeOrDocument(codeRaw, source = 'camera') {
       if (!codeRaw) return;
+
+      const code = String(codeRaw).trim().toUpperCase();
+
+      // Demo/test button trigger
+      if (code === 'DEMO_SAMPLE') {
+        playScannerBeep();
+        stopCamera();
+        document.getElementById('sDocTipo').value = "C.I. Elettronica (CIE)";
+        document.getElementById('sGenitoreCognome').value = 'ROSSI';
+        document.getElementById('sGenitoreNome').value = 'MARCO';
+        document.getElementById('sGenitoreLuogo').value = schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Roma';
+        document.getElementById('sGenitoreDataNascita').value = '1980-05-18';
+        document.getElementById('sDocNum').value = 'CA84920IT';
+        document.getElementById('sDocEnte').value = 'Comune di ' + (schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Residenza');
+        document.getElementById('sDocRil').value = '2022-05-10';
+        document.getElementById('sDocScad').value = '2032-05-10';
+        showToast('🧪 Dati di test dimostrativi caricati nel modulo.', 'info');
+        return;
+      }
 
       // Stop scanning loop immediately to avoid duplicates
       isCameraScanningActive = false;
@@ -4031,94 +4021,96 @@
       if (overlay) overlay.classList.add('detected');
 
       const statusText = document.getElementById('cameraStatusText');
-      if (statusText) statusText.textContent = "✅ Bip! Codice rilevato con successo!";
-
-      const code = String(codeRaw).trim().toUpperCase();
+      if (statusText) statusText.textContent = `✅ Bip! Codice letto: ${code}`;
 
       // Check if it's an Italian Codice Fiscale (Code 39 on back of CIE)
       const cfData = parseCodiceFiscale(code);
 
-      // Check if this person or CF is already in historical records
-      let matchedRecord = null;
-      if (cfData) {
-        matchedRecord = records.find(r => {
-          if (r.studentData && r.studentData.docNum === code) return true;
-          if (r.studentData && r.studentData.dataNascita === cfData.dataNascita) return true;
-          return false;
-        });
-      }
-
       setTimeout(() => {
         document.getElementById('sDocTipo').value = "C.I. Elettronica (CIE)";
 
-        if (matchedRecord && matchedRecord.studentData) {
-          const sd = matchedRecord.studentData;
-          document.getElementById('sGenitoreCognome').value = sd.genitoreCognome || matchedRecord.cognome || '';
-          document.getElementById('sGenitoreNome').value = sd.genitoreNome || matchedRecord.nome || '';
-          document.getElementById('sGenitoreCellulare').value = matchedRecord.cellulare || '';
-          if (sd.luogoNascita) document.getElementById('sGenitoreLuogo').value = sd.luogoNascita;
-          if (sd.dataNascita) document.getElementById('sGenitoreDataNascita').value = sd.dataNascita;
-          if (sd.docNum) document.getElementById('sDocNum').value = sd.docNum;
-          if (sd.docEnte) document.getElementById('sDocEnte').value = sd.docEnte;
-          if (sd.docRil) document.getElementById('sDocRil').value = sd.docRil;
-          if (sd.docScad) document.getElementById('sDocScad').value = sd.docScad;
-        } else if (cfData) {
+        if (cfData) {
+          // IT IS A REAL CODICE FISCALE SCANNED FROM THE CARD!
           document.getElementById('sGenitoreDataNascita').value = cfData.dataNascita;
-          document.getElementById('sDocNum').value = 'CA' + Math.floor(10000 + Math.random() * 90000) + 'IT';
-          document.getElementById('sDocEnte').value = 'Comune di ' + (schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Residenza');
-          const now = new Date();
-          const rYY = now.getFullYear() - 2;
-          document.getElementById('sDocRil').value = `${rYY}-06-15`;
-          document.getElementById('sDocScad').value = `${rYY + 10}-06-15`;
-        } else {
-          // General document or optical code
-          document.getElementById('sDocNum').value = (code.startsWith('CA') && code.length >= 7) ? code : ('CA' + Math.floor(10000 + Math.random() * 90000) + 'IT');
-          document.getElementById('sDocEnte').value = 'Comune di ' + (schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Residenza');
-          const now = new Date();
-          document.getElementById('sDocRil').value = `${now.getFullYear() - 1}-05-10`;
-          document.getElementById('sDocScad').value = `${now.getFullYear() + 9}-05-10`;
 
-          if (!document.getElementById('sGenitoreCognome').value) {
-            document.getElementById('sGenitoreCognome').value = 'ROSSI';
-            document.getElementById('sGenitoreNome').value = 'MARCO';
-            document.getElementById('sGenitoreDataNascita').value = '1980-04-12';
-            document.getElementById('sGenitoreLuogo').value = schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Roma';
+          // Check if person exists in historical records
+          const matched = records.find(r => {
+            if (r.studentData && r.studentData.docNum === cfData.codiceFiscale) return true;
+            if (r.studentData && r.studentData.dataNascita === cfData.dataNascita) {
+              const c1 = (r.cognome || '').toUpperCase().replace(/[^BCDFGHJKLMNPQRSTVWXYZ]/g, '');
+              if (c1.startsWith(cfData.consCognome)) return true;
+            }
+            return false;
+          });
+
+          if (matched && matched.studentData) {
+            const sd = matched.studentData;
+            document.getElementById('sGenitoreCognome').value = sd.genitoreCognome || matched.cognome || '';
+            document.getElementById('sGenitoreNome').value = sd.genitoreNome || matched.nome || '';
+            document.getElementById('sGenitoreCellulare').value = matched.cellulare || '';
+            if (sd.luogoNascita) document.getElementById('sGenitoreLuogo').value = sd.luogoNascita;
+            if (sd.docNum) document.getElementById('sDocNum').value = sd.docNum;
+            if (sd.docEnte) document.getElementById('sDocEnte').value = sd.docEnte;
+            if (sd.docRil) document.getElementById('sDocRil').value = sd.docRil;
+            if (sd.docScad) document.getElementById('sDocScad').value = sd.docScad;
+            showToast(`✅ Codice Fiscale ${cfData.codiceFiscale} riconosciuto! Dati persona caricati dallo storico.`, 'success');
+          } else {
+            // First time this card is scanned: set real birth date, do NOT put fake names!
+            showToast(`✅ Codice Fiscale ${cfData.codiceFiscale} letto! Data di nascita ${cfData.dataNascitaIt} impostata.`, 'success');
+            setTimeout(() => {
+              const cInp = document.getElementById('sGenitoreCognome');
+              if (cInp && !cInp.value) cInp.focus();
+            }, 300);
           }
+        } else if (/^[A-Z]{2}[0-9]{5}[A-Z]{2}$/.test(code)) {
+          // Real CIE Document number format (e.g. CA12345AA)
+          document.getElementById('sDocNum').value = code;
+          showToast(`✅ Numero Documento ${code} acquisito!`, 'success');
+        } else {
+          showToast(`✅ Codice letto: ${code}`, 'info');
         }
 
         stopCamera();
-        showToast('✅ Scansione completata con BEEP! Dati caricati nel modulo.', 'success');
-      }, 500);
+      }, 450);
     }
 
     function triggerManualScanCapture() {
-      handleDetectedBarcodeOrDocument('CA84920IT', 'manual_trigger');
+      handleDetectedBarcodeOrDocument('DEMO_SAMPLE', 'manual_trigger');
     }
 
     function parseCodiceFiscale(cf) {
       if (!cf || typeof cf !== 'string') return null;
-      const clean = cf.trim().toUpperCase();
-      const cfRegex = /^[A-Z]{6}([0-9]{2})([A-EHLMPR-T])([0-9]{2})[A-Z0-9]{5}$/;
+      const clean = cf.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const cfRegex = /^([A-Z]{3})([A-Z]{3})([0-9]{2})([A-EHLMPR-T])([0-9]{2})([A-Z][0-9]{3}[A-Z])$/;
       const match = clean.match(cfRegex);
       if (!match) return null;
 
-      const yy = parseInt(match[1], 10);
+      const consCognome = match[1];
+      const consNome = match[2];
+      const yy = parseInt(match[3], 10);
       const curYY = new Date().getFullYear() % 100;
       const fullYY = yy <= curYY ? 2000 + yy : 1900 + yy;
 
       const months = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'H': 6, 'L': 7, 'M': 8, 'P': 9, 'R': 10, 'S': 11, 'T': 12 };
-      const month = months[match[2]] || 1;
+      const month = months[match[4]] || 1;
 
-      let rawDay = parseInt(match[3], 10);
+      let rawDay = parseInt(match[5], 10);
       let sesso = 'M';
       if (rawDay > 40) {
         sesso = 'F';
         rawDay -= 40;
       }
+      const day = rawDay;
+
+      const dataNascitaIso = `${fullYY}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dataNascitaIt = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${fullYY}`;
 
       return {
         codiceFiscale: clean,
-        dataNascita: `${fullYY}-${String(month).padStart(2, '0')}-${String(rawDay).padStart(2, '0')}`,
+        consCognome: consCognome,
+        consNome: consNome,
+        dataNascita: dataNascitaIso,
+        dataNascitaIt: dataNascitaIt,
         sesso: sesso
       };
     }
