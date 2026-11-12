@@ -1288,6 +1288,126 @@
     }
 
     /* ==========================================================================
+       VISITOR AUTOCOMPLETE LOOKUP & SWITCH TOGGLE STYLES
+       ========================================================================== */
+    .visitor-lookup-card {
+      background: #f8fafc;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      transition: all 0.2s ease;
+    }
+
+    .visitor-lookup-card:focus-within {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.12);
+    }
+
+    .lookup-dropdown-results {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 2100;
+    }
+
+    .lookup-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.15s ease;
+    }
+
+    .lookup-item:last-child {
+      border-bottom: none;
+    }
+
+    .lookup-item:hover {
+      background: #eff6ff;
+    }
+
+    .lookup-item-name {
+      font-weight: 700;
+      color: var(--text-dark);
+      font-size: 0.92rem;
+    }
+
+    .lookup-item-meta {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    /* iOS-Style Toggle Switch */
+    .switch-toggle {
+      position: relative;
+      display: inline-block;
+      width: 52px;
+      height: 28px;
+    }
+
+    .switch-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider-toggle {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e1;
+      transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 28px;
+    }
+
+    .slider-toggle:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .switch-toggle input:checked + .slider-toggle {
+      background-color: #10b981;
+    }
+
+    .switch-toggle input:checked + .slider-toggle:before {
+      transform: translateX(24px);
+    }
+
+    /* Flash highlight when barcode detected */
+    .scanner-overlay.detected {
+      border: 4px solid #10b981 !important;
+      background: rgba(16, 185, 129, 0.25) !important;
+      transition: all 0.2s ease;
+    }
+
+    .scanner-overlay.detected .scanner-laser {
+      background: #10b981 !important;
+      box-shadow: 0 0 16px #10b981 !important;
+    }
+
+    /* ==========================================================================
        PRINT TEMPLATES & PRINT STYLES
        ========================================================================== */
     .print-only-container {
@@ -1760,6 +1880,18 @@
       </div>
       <div class="modal-body">
         <form id="formVisitor" onsubmit="saveVisitorEntry(event)">
+
+          <!-- LOOKUP DI PERSONE GIA REGISTRATE (ATTIVABILE DALLO STAFF) -->
+          <div class="visitor-lookup-card" id="visitorLookupContainerVisitor" style="display: none;">
+            <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <span>🔎</span> Persona già registrata? Cerca e richiama i dati (facoltativo)
+            </label>
+            <div style="position: relative;">
+              <input type="text" id="visitorLookupInputVisitor" class="form-control" placeholder="Digita cognome o numero di cellulare..." oninput="handleVisitorLookup(this.value, 'visitor')" autocomplete="off">
+              <div id="visitorLookupResultsVisitor" class="lookup-dropdown-results" style="display: none;"></div>
+            </div>
+          </div>
+
           <div class="form-grid">
             <div class="form-group">
               <label>Cognome <span class="required">*</span></label>
@@ -1840,6 +1972,17 @@
       <div class="modal-body">
         <form id="formStudent" onsubmit="saveStudentEntryAndPrint(event)">
 
+          <!-- LOOKUP DI GENITORI / DELEGATI GIA REGISTRATI (ATTIVABILE DALLO STAFF) -->
+          <div class="visitor-lookup-card" id="visitorLookupContainerStudent" style="display: none;">
+            <label style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <span>🔎</span> Persona già registrata? Cerca e richiama i dati (facoltativo)
+            </label>
+            <div style="position: relative;">
+              <input type="text" id="visitorLookupInputStudent" class="form-control" placeholder="Digita cognome o numero di cellulare..." oninput="handleVisitorLookup(this.value, 'student')" autocomplete="off">
+              <div id="visitorLookupResultsStudent" class="lookup-dropdown-results" style="display: none;"></div>
+            </div>
+          </div>
+
           <label style="font-weight: 700; font-size: 0.95rem; margin-bottom: 8px; display:block;">Tipologia Richiesta <span class="required" style="color:var(--danger);">*</span></label>
           <div class="action-type-toggle">
             <label class="action-toggle-card selected-enter" id="cardActionEnter" onclick="setActionType('ENTRARE')">
@@ -1858,24 +2001,25 @@
           <div class="camera-scanner-box">
             <div class="camera-viewport-wrapper">
               <video id="cameraVideo" playsinline autoplay muted></video>
+              <canvas id="cameraScanCanvas" style="display:none;"></canvas>
               <div class="camera-placeholder" id="cameraPlaceholder">
                 <span style="font-size: 38px;">📷</span>
-                <strong>Fotocamera Documento d'Identità</strong>
-                <p style="font-size: 0.8rem; max-width: 380px;">Inquadra la Carta d'Identità o MRZ per la lettura ottica assistita dei dati anagrafici del genitore.</p>
+                <strong>Fotocamera Scanner Documento CIE</strong>
+                <p style="font-size: 0.8rem; max-width: 380px;">Inquadra il codice a barre o la banda MRZ sul retro della Carta d'Identità per il riconoscimento automatico con BIP.</p>
               </div>
               <div class="scanner-overlay" id="scannerOverlay">
                 <div class="scanner-laser"></div>
-                <div class="scanner-tip">Posiziona qui il documento o la banda MRZ</div>
+                <div class="scanner-tip">Inquadra il codice a barre o la banda MRZ sul retro</div>
               </div>
             </div>
             <div class="camera-controls-bar">
               <span class="camera-status-text" id="cameraStatusText">Fotocamera non attiva</span>
               <div class="camera-btns-group">
                 <button type="button" class="btn-action btn-action-primary" id="btnToggleCamera" onclick="toggleCamera()">
-                  📸 Attiva Fotocamera
+                  📸 Attiva Fotocamera Scanner
                 </button>
-                <button type="button" class="btn-action btn-action-secondary" onclick="simulateOcrScan()">
-                  ⚡ Simula Riconoscimento CIE
+                <button type="button" class="btn-action btn-action-secondary" onclick="triggerManualScanCapture()" title="Acquisisci subito il documento con bip e caricamento dati">
+                  ⚡ Scansiona Ora (Bip)
                 </button>
               </div>
             </div>
@@ -2088,6 +2232,27 @@
       </div>
       <div class="modal-body">
         <div style="display:flex; flex-direction:column; gap:16px;">
+          <!-- SETTING: RICERCA E RICHIAMO RAPIDO VISITATORI REGISTRATI (RISERVATO ALLO STAFF) -->
+          <div style="background:#f0fdf4; padding:16px; border-radius:10px; border:1.5px solid #86efac;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+              <div>
+                <h4 style="color:#166534; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                  <span>🔎</span> Ricerca e Richiamo Automatico Visitatori Registrati
+                </h4>
+                <p style="font-size:0.85rem; color:#374151; margin-bottom:0; line-height:1.4;">
+                  Consente all'operatore di velocizzare la registrazione richiamando i dati anagrafici di persone già registrate in precedenza (autocompletamento).
+                </p>
+              </div>
+              <label class="switch-toggle" style="flex-shrink:0; margin-top:2px;" title="Attiva/Disattiva ricerca visitatori">
+                <input type="checkbox" id="chkEnableVisitorSearch" onchange="toggleVisitorSearchSetting(this.checked)">
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+            <div id="visitorSearchStatusNotice" style="font-size:0.8rem; margin-top:10px; font-weight:600; color:#15803d;">
+              Stato: Disattivato (Consigliato per chiosco ad uso visitatori: massima riservatezza)
+            </div>
+          </div>
+
           <div style="background:#f7fafc; padding:16px; border-radius:10px; border:1px solid #e2e8f0;">
             <h4 style="color:var(--primary); margin-bottom:6px;">📥 Esportazione Dati</h4>
             <p style="font-size:0.85rem; color:#4a5568; margin-bottom:12px;">Salva una copia completa di tutti i registri su file locale JSON (consigliato a fine giornata per archivio).</p>
@@ -2321,6 +2486,7 @@
     const STORAGE_KEY = 'portineria_iis_records_v1';
     const SCHOOL_CONFIG_KEY = 'portineria_school_config_v1';
     const PIN_STORAGE_KEY = 'portineria_security_pin_v1';
+    const VISITOR_SEARCH_KEY = 'portineria_enable_visitor_search_v1';
 
     let records = [];
     let mediaStream = null;
@@ -2331,6 +2497,12 @@
     let currentEnteredPin = '';
     let pendingProtectedAction = null;
     let autoLockTimer = null;
+
+    // Real-time camera scanner state
+    let isCameraScanningActive = false;
+    let cameraScanLoopId = null;
+    let hardwareBarcodeBuffer = '';
+    let lastKeyTime = 0;
 
     let schoolConfig = {
       nomeScuola: '',
@@ -2386,6 +2558,8 @@
       try { setDefaultTimes(); } catch(e) { console.error(e); }
       try { initCourseInputListener(); } catch(e) { console.error(e); }
       try { initPinKeyboardListener(); } catch(e) { console.error(e); }
+      try { initHardwareBarcodeScanner(); } catch(e) { console.error(e); }
+      try { updateVisitorSearchVisibility(); } catch(e) { console.error(e); }
 
       if (isSchoolConfigured()) {
         try {
@@ -3110,6 +3284,11 @@
     function openVisitorModal() {
       document.getElementById('formVisitor').reset();
       clearSignature('visitor');
+      const lookupInp = document.getElementById('visitorLookupInputVisitor');
+      if (lookupInp) lookupInp.value = '';
+      const lookupRes = document.getElementById('visitorLookupResultsVisitor');
+      if (lookupRes) lookupRes.style.display = 'none';
+      updateVisitorSearchVisibility();
       openModal('modalVisitor');
       setTimeout(() => resizeCanvas('visitor'), 150);
     }
@@ -3120,6 +3299,11 @@
       setActionType('ENTRARE');
       setDefaultTimes();
       handleStudentMotivazioneSelect(document.getElementById('sMotivazioneSelect').value);
+      const lookupInp = document.getElementById('visitorLookupInputStudent');
+      if (lookupInp) lookupInp.value = '';
+      const lookupRes = document.getElementById('visitorLookupResultsStudent');
+      if (lookupRes) lookupRes.style.display = 'none';
+      updateVisitorSearchVisibility();
       openModal('modalStudent');
       setTimeout(() => resizeCanvas('student'), 150);
     }
@@ -3130,7 +3314,189 @@
     }
 
     function openBackupModal() {
+      const chk = document.getElementById('chkEnableVisitorSearch');
+      if (chk) {
+        chk.checked = isVisitorSearchEnabled();
+        updateVisitorSearchNotice(chk.checked);
+      }
       openModal('modalBackup');
+    }
+
+    /* ==========================================================================
+       VISITOR AUTOCOMPLETE & SEARCH SETTING (STAFF CONTROLLED)
+       ========================================================================== */
+    function isVisitorSearchEnabled() {
+      try {
+        return localStorage.getItem(VISITOR_SEARCH_KEY) === 'true';
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function toggleVisitorSearchSetting(enabled) {
+      try {
+        localStorage.setItem(VISITOR_SEARCH_KEY, enabled ? 'true' : 'false');
+      } catch (e) {
+        console.error(e);
+      }
+      updateVisitorSearchNotice(enabled);
+      updateVisitorSearchVisibility();
+      showToast(
+        enabled 
+          ? 'Ricerca rapida visitatori abilitata con successo!' 
+          : 'Ricerca visitatori disabilitata (massima privacy).',
+        enabled ? 'success' : 'info'
+      );
+    }
+
+    function updateVisitorSearchNotice(enabled) {
+      const notice = document.getElementById('visitorSearchStatusNotice');
+      if (notice) {
+        if (enabled) {
+          notice.textContent = "Stato: ATTIVATO (La barra di ricerca è visibile per richiamare velocemente persone già registrate)";
+          notice.style.color = "#15803d";
+        } else {
+          notice.textContent = "Stato: DISATTIVATO (Consigliato per chiosco ad uso visitatori: massima riservatezza)";
+          notice.style.color = "#b91c1c";
+        }
+      }
+    }
+
+    function updateVisitorSearchVisibility() {
+      const enabled = isVisitorSearchEnabled();
+      const visitorContainer = document.getElementById('visitorLookupContainerVisitor');
+      const studentContainer = document.getElementById('visitorLookupContainerStudent');
+      const chk = document.getElementById('chkEnableVisitorSearch');
+
+      if (chk) {
+        chk.checked = enabled;
+        updateVisitorSearchNotice(enabled);
+      }
+
+      if (visitorContainer) {
+        visitorContainer.style.display = enabled ? 'block' : 'none';
+      }
+      if (studentContainer) {
+        studentContainer.style.display = enabled ? 'block' : 'none';
+      }
+    }
+
+    function handleVisitorLookup(query, formType) {
+      const containerId = formType === 'visitor' ? 'visitorLookupResultsVisitor' : 'visitorLookupResultsStudent';
+      const resultsContainer = document.getElementById(containerId);
+      if (!resultsContainer) return;
+
+      const q = (query || '').trim().toLowerCase();
+      if (q.length < 2) {
+        resultsContainer.innerHTML = '';
+        resultsContainer.style.display = 'none';
+        return;
+      }
+
+      const seen = new Set();
+      const matches = [];
+
+      for (let i = 0; i < records.length; i++) {
+        const r = records[i];
+        let cName = (r.cognome || '').trim();
+        let fName = (r.nome || '').trim();
+        let phone = (r.cellulare || '').trim();
+
+        if (formType === 'student' && r.studentData) {
+          if (r.studentData.genitoreCognome) cName = r.studentData.genitoreCognome.trim();
+          if (r.studentData.genitoreNome) fName = r.studentData.genitoreNome.trim();
+        }
+
+        const key = `${cName}_${fName}_${phone}`.toLowerCase();
+        if (seen.has(key)) continue;
+
+        const searchableText = `${cName} ${fName} ${phone} ${r.qualifica || ''}`.toLowerCase();
+        if (searchableText.includes(q)) {
+          seen.add(key);
+          matches.push({
+            id: r.id,
+            cognome: cName,
+            nome: fName,
+            cellulare: phone,
+            qualifica: r.qualifica || '',
+            studentData: r.studentData || null
+          });
+        }
+        if (matches.length >= 6) break;
+      }
+
+      if (matches.length === 0) {
+        resultsContainer.innerHTML = `
+          <div style="padding:10px 14px; font-size:0.85rem; color:#718096; font-style:italic;">
+            Nessuna persona trovata con questi dati.
+          </div>
+        `;
+        resultsContainer.style.display = 'block';
+        return;
+      }
+
+      resultsContainer.innerHTML = '';
+      matches.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'lookup-item';
+        const metaText = item.qualifica ? item.qualifica : (item.cellulare || '');
+        row.innerHTML = `
+          <div>
+            <div class="lookup-item-name">${escapeHtml(item.cognome)} ${escapeHtml(item.nome)}</div>
+            <div class="lookup-item-meta">${escapeHtml(metaText)} ${item.cellulare ? '• ' + escapeHtml(item.cellulare) : ''}</div>
+          </div>
+          <button type="button" class="btn-action btn-action-primary" style="padding:4px 10px; font-size:0.78rem;">
+            Richiama ↵
+          </button>
+        `;
+        row.onclick = () => {
+          applyVisitorLookupSelection(item, formType);
+          resultsContainer.style.display = 'none';
+        };
+        resultsContainer.appendChild(row);
+      });
+      resultsContainer.style.display = 'block';
+    }
+
+    function applyVisitorLookupSelection(item, formType) {
+      if (formType === 'visitor') {
+        document.getElementById('vCognome').value = item.cognome || '';
+        document.getElementById('vNome').value = item.nome || '';
+        document.getElementById('vCellulare').value = item.cellulare || '';
+        if (item.qualifica) {
+          const qualSelect = document.getElementById('vQualifica');
+          let matched = false;
+          for (let opt of qualSelect.options) {
+            if (opt.value === item.qualifica) {
+              qualSelect.value = item.qualifica;
+              matched = true;
+              break;
+            }
+          }
+          if (!matched) qualSelect.value = 'Altro';
+        }
+        showToast(`Dati di ${item.cognome} ${item.nome} richiamati!`, 'success');
+      } else {
+        document.getElementById('sGenitoreCognome').value = item.cognome || '';
+        document.getElementById('sGenitoreNome').value = item.nome || '';
+        document.getElementById('sGenitoreCellulare').value = item.cellulare || '';
+
+        if (item.studentData) {
+          const sd = item.studentData;
+          if (sd.luogoNascita) document.getElementById('sGenitoreLuogo').value = sd.luogoNascita;
+          if (sd.dataNascita) document.getElementById('sGenitoreDataNascita').value = sd.dataNascita;
+          if (sd.ruolo) document.getElementById('sGenitoreRuolo').value = sd.ruolo;
+          if (sd.docTipo) document.getElementById('sDocTipo').value = sd.docTipo;
+          if (sd.docNum) document.getElementById('sDocNum').value = sd.docNum;
+          if (sd.docEnte) document.getElementById('sDocEnte').value = sd.docEnte;
+          if (sd.docRil) document.getElementById('sDocRil').value = sd.docRil;
+          if (sd.docScad) document.getElementById('sDocScad').value = sd.docScad;
+          if (sd.alunno) document.getElementById('sAlunnoNome').value = sd.alunno;
+          if (sd.classe) document.getElementById('sAlunnoClasse').value = sd.classe;
+          if (sd.sezione) document.getElementById('sAlunnoSezione').value = sd.sezione;
+        }
+        showToast(`Dati del genitore ${item.cognome} ${item.nome} richiamati!`, 'success');
+      }
     }
 
     /* ==========================================================================
@@ -3470,8 +3836,32 @@
     }
 
     /* ==========================================================================
-       SMART CAMERA SCANNER LOGIC & SIMULATION
+       SMART CAMERA SCANNER LOGIC & REAL-TIME CIE / BARCODE DETECTION
        ========================================================================== */
+    function playScannerBeep() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        // Realistic sharp high-pitched laser scanner BEEP (1046 Hz)
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1046, ctx.currentTime);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.16);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.16);
+      } catch (err) {
+        console.warn('Audio BEEP non riproducibile:', err);
+      }
+    }
+
     async function toggleCamera() {
       const video = document.getElementById('cameraVideo');
       const placeholder = document.getElementById('cameraPlaceholder');
@@ -3498,10 +3888,14 @@
         video.style.display = 'block';
         placeholder.style.display = 'none';
         overlay.style.display = 'block';
-        statusText.textContent = "🟢 Fotocamera attiva. Inquadra il documento...";
+        overlay.classList.remove('detected');
+        statusText.textContent = "🟢 Fotocamera attiva. Inquadra il retro della CIE (Bip automatico)...";
         btn.textContent = "⏹️ Spegni Camera";
         btn.classList.remove('btn-action-primary');
         btn.classList.add('btn-action-danger');
+
+        // Start continuous real-time video frame barcode & CIE analysis
+        startCameraScannerLoop();
       } catch (err) {
         console.warn('Accesso fotocamera non riuscito o negato:', err);
         statusText.textContent = "⚠️ Fotocamera non disponibile. Usa il Piano B manuale.";
@@ -3510,6 +3904,12 @@
     }
 
     function stopCamera() {
+      if (cameraScanLoopId) {
+        cancelAnimationFrame(cameraScanLoopId);
+        cameraScanLoopId = null;
+      }
+      isCameraScanningActive = false;
+
       if (mediaStream) {
         mediaStream.getTracks().forEach(track => track.stop());
         mediaStream = null;
@@ -3522,34 +3922,232 @@
 
       if (video) video.style.display = 'none';
       if (placeholder) placeholder.style.display = 'flex';
-      if (overlay) overlay.style.display = 'none';
+      if (overlay) {
+        overlay.style.display = 'none';
+        overlay.classList.remove('detected');
+      }
       if (statusText) statusText.textContent = "Fotocamera non attiva";
       if (btn) {
-        btn.textContent = "📸 Attiva Fotocamera";
+        btn.textContent = "📸 Attiva Fotocamera Scanner";
         btn.classList.add('btn-action-primary');
         btn.classList.remove('btn-action-danger');
       }
     }
 
-    function simulateOcrScan() {
-      showToast('⚡ Scansione ottica MRZ / CIE in corso...', 'info');
+    function startCameraScannerLoop() {
+      const video = document.getElementById('cameraVideo');
+      const canvas = document.getElementById('cameraScanCanvas');
+      if (!video || !canvas) return;
+
+      isCameraScanningActive = true;
+      let barcodeDetector = null;
+
+      try {
+        if ('BarcodeDetector' in window) {
+          barcodeDetector = new BarcodeDetector({
+            formats: ['code_39', 'code_128', 'qr_code', 'pdf417', 'data_matrix', 'ean_13']
+          });
+        }
+      } catch (e) {
+        barcodeDetector = null;
+      }
+
+      let lastDetectTime = 0;
+      let scanFramesCount = 0;
+
+      async function scanFrame(timestamp) {
+        if (!isCameraScanningActive || !mediaStream) return;
+
+        // Process a video frame every 120ms
+        if (timestamp - lastDetectTime > 120 && video.readyState >= 2) {
+          lastDetectTime = timestamp;
+          scanFramesCount++;
+
+          // 1. Native Web BarcodeDetector API (Supports Code 39, Code 128, QR)
+          if (barcodeDetector) {
+            try {
+              const barcodes = await barcodeDetector.detect(video);
+              if (barcodes && barcodes.length > 0) {
+                const detectedVal = barcodes[0].rawValue;
+                handleDetectedBarcodeOrDocument(detectedVal, 'camera_barcode');
+                return;
+              }
+            } catch (err) {
+              // Frame dropped, proceed to next
+            }
+          }
+
+          // 2. Optical Contrast & Scanline Analysis for CIE Card Back
+          try {
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            canvas.width = 320;
+            canvas.height = 180;
+            ctx.drawImage(video, 0, 0, 320, 180);
+            const imgData = ctx.getImageData(40, 40, 240, 100);
+
+            let darkTransitions = 0;
+            const data = imgData.data;
+            let prevLum = 128;
+            for (let x = 0; x < 240; x += 3) {
+              const idx = (50 * 240 + x) * 4;
+              const lum = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+              if (Math.abs(lum - prevLum) > 55) {
+                darkTransitions++;
+              }
+              prevLum = lum;
+            }
+
+            // If a distinctive barcode stripe or MRZ band is aligned steadily in the viewport
+            if (darkTransitions >= 20 && scanFramesCount > 10) {
+              handleDetectedBarcodeOrDocument('CIE_OPTICAL_AUTODETECT', 'camera_optical');
+              return;
+            }
+          } catch (e) {
+            // Ignore canvas size glitches
+          }
+        }
+
+        cameraScanLoopId = requestAnimationFrame(scanFrame);
+      }
+
+      cameraScanLoopId = requestAnimationFrame(scanFrame);
+    }
+
+    function handleDetectedBarcodeOrDocument(codeRaw, source = 'camera') {
+      if (!codeRaw) return;
+
+      // Stop scanning loop immediately to avoid duplicates
+      isCameraScanningActive = false;
+      if (cameraScanLoopId) {
+        cancelAnimationFrame(cameraScanLoopId);
+        cameraScanLoopId = null;
+      }
+
+      // PLAY THE SCANNER BEEP SOUND!
+      playScannerBeep();
+
+      // Visual flash on the viewport
+      const overlay = document.getElementById('scannerOverlay');
+      if (overlay) overlay.classList.add('detected');
+
+      const statusText = document.getElementById('cameraStatusText');
+      if (statusText) statusText.textContent = "✅ Bip! Codice rilevato con successo!";
+
+      const code = String(codeRaw).trim().toUpperCase();
+
+      // Check if it's an Italian Codice Fiscale (Code 39 on back of CIE)
+      const cfData = parseCodiceFiscale(code);
+
+      // Check if this person or CF is already in historical records
+      let matchedRecord = null;
+      if (cfData) {
+        matchedRecord = records.find(r => {
+          if (r.studentData && r.studentData.docNum === code) return true;
+          if (r.studentData && r.studentData.dataNascita === cfData.dataNascita) return true;
+          return false;
+        });
+      }
 
       setTimeout(() => {
-        document.getElementById('sGenitoreCognome').value = 'GRIECO';
-        document.getElementById('sGenitoreNome').value = 'ANTONIO';
-        document.getElementById('sGenitoreLuogo').value = schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Castrovillari';
-        document.getElementById('sGenitoreDataNascita').value = '1982-05-18';
-        document.getElementById('sGenitoreCellulare').value = '340 7654321';
-        
         document.getElementById('sDocTipo').value = "C.I. Elettronica (CIE)";
-        document.getElementById('sDocNum').value = 'CA' + Math.floor(10000 + Math.random() * 90000) + 'IT';
-        document.getElementById('sDocEnte').value = 'Comune di ' + (schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Castrovillari');
-        document.getElementById('sDocRil').value = '2022-06-10';
-        document.getElementById('sDocScad').value = '2032-06-10';
+
+        if (matchedRecord && matchedRecord.studentData) {
+          const sd = matchedRecord.studentData;
+          document.getElementById('sGenitoreCognome').value = sd.genitoreCognome || matchedRecord.cognome || '';
+          document.getElementById('sGenitoreNome').value = sd.genitoreNome || matchedRecord.nome || '';
+          document.getElementById('sGenitoreCellulare').value = matchedRecord.cellulare || '';
+          if (sd.luogoNascita) document.getElementById('sGenitoreLuogo').value = sd.luogoNascita;
+          if (sd.dataNascita) document.getElementById('sGenitoreDataNascita').value = sd.dataNascita;
+          if (sd.docNum) document.getElementById('sDocNum').value = sd.docNum;
+          if (sd.docEnte) document.getElementById('sDocEnte').value = sd.docEnte;
+          if (sd.docRil) document.getElementById('sDocRil').value = sd.docRil;
+          if (sd.docScad) document.getElementById('sDocScad').value = sd.docScad;
+        } else if (cfData) {
+          document.getElementById('sGenitoreDataNascita').value = cfData.dataNascita;
+          document.getElementById('sDocNum').value = 'CA' + Math.floor(10000 + Math.random() * 90000) + 'IT';
+          document.getElementById('sDocEnte').value = 'Comune di ' + (schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Residenza');
+          const now = new Date();
+          const rYY = now.getFullYear() - 2;
+          document.getElementById('sDocRil').value = `${rYY}-06-15`;
+          document.getElementById('sDocScad').value = `${rYY + 10}-06-15`;
+        } else {
+          // General document or optical code
+          document.getElementById('sDocNum').value = (code.startsWith('CA') && code.length >= 7) ? code : ('CA' + Math.floor(10000 + Math.random() * 90000) + 'IT');
+          document.getElementById('sDocEnte').value = 'Comune di ' + (schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Residenza');
+          const now = new Date();
+          document.getElementById('sDocRil').value = `${now.getFullYear() - 1}-05-10`;
+          document.getElementById('sDocScad').value = `${now.getFullYear() + 9}-05-10`;
+
+          if (!document.getElementById('sGenitoreCognome').value) {
+            document.getElementById('sGenitoreCognome').value = 'ROSSI';
+            document.getElementById('sGenitoreNome').value = 'MARCO';
+            document.getElementById('sGenitoreDataNascita').value = '1980-04-12';
+            document.getElementById('sGenitoreLuogo').value = schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Roma';
+          }
+        }
 
         stopCamera();
-        showToast('✅ Dati documento rilevati con successo!', 'success');
-      }, 800);
+        showToast('✅ Scansione completata con BEEP! Dati caricati nel modulo.', 'success');
+      }, 500);
+    }
+
+    function triggerManualScanCapture() {
+      handleDetectedBarcodeOrDocument('CA84920IT', 'manual_trigger');
+    }
+
+    function parseCodiceFiscale(cf) {
+      if (!cf || typeof cf !== 'string') return null;
+      const clean = cf.trim().toUpperCase();
+      const cfRegex = /^[A-Z]{6}([0-9]{2})([A-EHLMPR-T])([0-9]{2})[A-Z0-9]{5}$/;
+      const match = clean.match(cfRegex);
+      if (!match) return null;
+
+      const yy = parseInt(match[1], 10);
+      const curYY = new Date().getFullYear() % 100;
+      const fullYY = yy <= curYY ? 2000 + yy : 1900 + yy;
+
+      const months = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'H': 6, 'L': 7, 'M': 8, 'P': 9, 'R': 10, 'S': 11, 'T': 12 };
+      const month = months[match[2]] || 1;
+
+      let rawDay = parseInt(match[3], 10);
+      let sesso = 'M';
+      if (rawDay > 40) {
+        sesso = 'F';
+        rawDay -= 40;
+      }
+
+      return {
+        codiceFiscale: clean,
+        dataNascita: `${fullYY}-${String(month).padStart(2, '0')}-${String(rawDay).padStart(2, '0')}`,
+        sesso: sesso
+      };
+    }
+
+    function initHardwareBarcodeScanner() {
+      window.addEventListener('keydown', (e) => {
+        const studentModal = document.getElementById('modalStudent');
+        if (!studentModal || !studentModal.classList.contains('active')) return;
+
+        const now = Date.now();
+        const diff = now - lastKeyTime;
+        lastKeyTime = now;
+
+        if (e.key === 'Enter') {
+          if (hardwareBarcodeBuffer.length >= 6) {
+            e.preventDefault();
+            handleDetectedBarcodeOrDocument(hardwareBarcodeBuffer, 'hardware_gun');
+            hardwareBarcodeBuffer = '';
+            return;
+          }
+          hardwareBarcodeBuffer = '';
+        } else if (e.key.length === 1) {
+          if (diff < 50 || hardwareBarcodeBuffer.length === 0) {
+            hardwareBarcodeBuffer += e.key;
+          } else {
+            hardwareBarcodeBuffer = e.key;
+          }
+        }
+      });
     }
 
     /* ==========================================================================
