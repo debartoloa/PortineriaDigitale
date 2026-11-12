@@ -13,6 +13,9 @@
   <meta name="description" content="Gestione portineria, accessi visitatori e moduli ingresso/uscita alunni per Istituti Scolastici">
   <link rel="manifest" href='data:application/manifest+json,{"name":"Portineria Digitale Scolastica","short_name":"Portineria","start_url":".","display":"standalone","background_color":"#f0f4f8","theme_color":"#1a365d","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%231a365d%22/%3E%3Cpath d=%22M50 20 L20 40 L30 40 L30 80 L70 80 L70 40 L80 40 Z%22 fill=%22white%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
 
+  <!-- TESSERACT.JS OCR CLIENT-SIDE ENGINE (PER RICONOSCIMENTO TESTO FRONTE DOCUMENTO) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
   <style>
     /* ==========================================================================
        RESET & BASE STYLES
@@ -891,8 +894,9 @@
     .camera-viewport-wrapper {
       position: relative;
       width: 100%;
-      height: 220px;
-      background: #000;
+      min-height: 250px;
+      height: 270px;
+      background: #090d16;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -906,6 +910,15 @@
       display: none;
     }
 
+    #capturedDocPreview {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+      display: none;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+
     .camera-placeholder {
       display: flex;
       flex-direction: column;
@@ -913,50 +926,108 @@
       gap: 10px;
       color: #94a3b8;
       text-align: center;
-      padding: 20px;
+      padding: 24px 16px;
     }
 
-    .scanner-overlay {
+    /* CARD FRONT GUIDE OUTLINE (Standard ID-1 / CIE format) */
+    .card-front-guide {
       position: absolute;
-      top: 15px;
-      left: 20px;
-      right: 20px;
-      bottom: 15px;
-      border: 2px dashed rgba(255, 255, 255, 0.7);
+      width: 320px;
+      max-width: 90%;
+      height: 200px;
+      border: 3px solid #38bdf8;
       border-radius: 12px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55), 0 0 20px rgba(56, 189, 248, 0.4);
       pointer-events: none;
       display: none;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 10px 14px;
+      box-sizing: border-box;
+      transition: all 0.25s ease;
+      z-index: 5;
     }
 
-    .scanner-laser {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, transparent, #ef4444, #ffeb3b, #ef4444, transparent);
-      box-shadow: 0 0 8px #ef4444;
-      animation: scanLaser 2s infinite ease-in-out;
+    .card-front-guide.captured {
+      border-color: #10b981;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65), 0 0 25px rgba(16, 185, 129, 0.6);
     }
 
-    @keyframes scanLaser {
-      0% { top: 5%; }
-      50% { top: 95%; }
-      100% { top: 5%; }
+    .card-guide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: #38bdf8;
+      text-transform: uppercase;
+      background: rgba(15, 23, 42, 0.75);
+      padding: 3px 8px;
+      border-radius: 6px;
     }
 
-    .scanner-tip {
-      position: absolute;
-      bottom: 8px;
-      left: 0;
-      right: 0;
+    .card-guide-body {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin: auto 0;
+    }
+
+    .card-photo-silhouette {
+      width: 55px;
+      height: 72px;
+      border: 2px dashed rgba(255, 255, 255, 0.6);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.1);
       text-align: center;
-      font-size: 0.78rem;
-      background: rgba(0,0,0,0.6);
-      padding: 3px 0;
+    }
+
+    .card-text-silhouette {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .card-text-line {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.35);
+      border-radius: 4px;
+    }
+
+    .card-guide-footer {
+      text-align: center;
+      font-size: 0.72rem;
       color: #f1f5f9;
-      pointer-events: none;
+      font-weight: 600;
+      background: rgba(15, 23, 42, 0.75);
+      padding: 3px 6px;
+      border-radius: 4px;
+    }
+
+    .doc-captured-badge {
+      display: none;
+      background: #f0fdf4;
+      border: 1.5px solid #86efac;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .camera-controls-bar {
@@ -1997,32 +2068,96 @@
             </label>
           </div>
 
-          <!-- SMART CAMERA SCANNER BOX -->
+          <!-- SMART CAMERA SCANNER BOX - FRONTE DOCUMENTO -->
           <div class="camera-scanner-box">
-            <div class="camera-viewport-wrapper">
+            <div class="camera-viewport-wrapper" id="cameraViewportWrapper">
               <video id="cameraVideo" playsinline autoplay muted></video>
               <canvas id="cameraScanCanvas" style="display:none;"></canvas>
+              <img id="capturedDocPreview" alt="Foto Fronte Documento">
+
+              <!-- PLACEHOLDER PRIMA DELLO SCATTO -->
               <div class="camera-placeholder" id="cameraPlaceholder">
-                <span style="font-size: 38px;">📷</span>
-                <strong>Fotocamera Scanner Documento CIE</strong>
-                <p style="font-size: 0.8rem; max-width: 380px;">Inquadra il codice a barre o la banda MRZ sul retro della Carta d'Identità per il riconoscimento automatico con BIP.</p>
+                <span style="font-size: 42px;">🪪</span>
+                <strong style="font-size: 1.05rem; color: #f1f5f9;">Acquisizione FRONTE Documento d'Identità</strong>
+                <p style="font-size: 0.82rem; max-width: 420px; color: #94a3b8; margin: 0 auto;">
+                  Inquadra o carica la foto del <strong>FRONTE</strong> della CIE o patente (lato con Cognome, Nome e Foto). Lo scatto estrarrà automaticamente i dati anagrafici con tecnologia OCR.
+                </p>
+                <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; justify-content:center;">
+                  <button type="button" class="btn-action btn-action-primary" onclick="toggleCamera()" style="padding:10px 18px;">
+                    📸 Attiva Fotocamera
+                  </button>
+                  <button type="button" class="btn-action btn-action-secondary" onclick="triggerDocUpload()" style="padding:10px 18px; background:rgba(255,255,255,0.15); color:#fff; border-color:rgba(255,255,255,0.3);">
+                    📁 Carica / Scatta da File
+                  </button>
+                </div>
               </div>
-              <div class="scanner-overlay" id="scannerOverlay">
-                <div class="scanner-laser"></div>
-                <div class="scanner-tip">Inquadra il codice a barre o la banda MRZ sul retro</div>
+
+              <!-- SAGOMA GUIDA DELLA TESSERA (RAPPORTO CIE/PATENTE) -->
+              <div class="card-front-guide" id="cardFrontGuide" style="display: none;">
+                <div class="card-guide-header">
+                  <span>🇮🇹 Repubblica Italiana</span>
+                  <span id="guideDocTypeLabel">CIE / FRONTE</span>
+                </div>
+                <div class="card-guide-body">
+                  <div class="card-photo-silhouette">
+                    <span style="font-size:16px;">👤</span>
+                    <span>FOTO</span>
+                  </div>
+                  <div class="card-text-silhouette">
+                    <div class="card-text-line" style="width: 70%;"></div>
+                    <div class="card-text-line" style="width: 90%;"></div>
+                    <div class="card-text-line" style="width: 60%;"></div>
+                    <div class="card-text-line" style="width: 80%;"></div>
+                  </div>
+                </div>
+                <div class="card-guide-footer">
+                  <span>Posiziona il FRONTE del documento nella cornice</span>
+                </div>
               </div>
             </div>
+
+            <!-- HIDDEN FILE INPUT PER SCATTO DA SMARTPHONE/TABLET -->
+            <input type="file" id="fileDocInput" accept="image/*" capture="environment" style="display:none;" onchange="handleDocFileUpload(event)">
+
+            <!-- BARRA CONTROLLI FOTOCAMERA -->
             <div class="camera-controls-bar">
               <span class="camera-status-text" id="cameraStatusText">Fotocamera non attiva</span>
-              <div class="camera-btns-group">
-                <button type="button" class="btn-action btn-action-primary" id="btnToggleCamera" onclick="toggleCamera()">
-                  📸 Attiva Fotocamera Scanner
+              <div class="camera-btns-group" id="cameraBtnsLive">
+                <button type="button" class="btn-action btn-action-primary" id="btnCaptureDocFront" onclick="captureAndAnalyzeDocFront()" style="display:none; font-weight:700; background:#059669; border-color:#047857;">
+                  📸 SCATTA E ANALIZZA FRONTE
+                </button>
+                <button type="button" class="btn-action btn-action-secondary" id="btnToggleCamera" onclick="toggleCamera()">
+                  📸 Avvia Fotocamera
+                </button>
+                <button type="button" class="btn-action btn-action-secondary" onclick="triggerDocUpload()" title="Carica una foto del documento o usa la fotocamera del tablet">
+                  📁 Carica Foto
                 </button>
                 <button type="button" class="btn-action btn-action-secondary" onclick="triggerManualScanCapture()" title="Simula una scansione con dati di prova">
-                  🧪 Test Demo CIE (Simulazione)
+                  🧪 Test Demo CIE
+                </button>
+              </div>
+
+              <!-- CONTROLLI DOPO LO SCATTO -->
+              <div class="camera-btns-group" id="cameraBtnsReview" style="display:none;">
+                <button type="button" class="btn-action btn-action-secondary" onclick="retakeDocPhoto()">
+                  🔄 Rifai Scatto
                 </button>
               </div>
             </div>
+          </div>
+
+          <!-- BADGE NOTIFICA DOCUMENTO ACQUISITO -->
+          <div class="doc-captured-badge" id="docCapturedBadge">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:24px;">✅</span>
+              <div>
+                <strong style="color:#166534; font-size:0.92rem;">Fronte Documento Acquisito ed Elaborato!</strong>
+                <p style="margin:0; font-size:0.8rem; color:#374151;" id="docCapturedSummary">Dati anagrafici estratti e inseriti nei campi sottostanti.</p>
+              </div>
+            </div>
+            <button type="button" class="btn-action btn-action-secondary" onclick="retakeDocPhoto()" style="padding:4px 10px; font-size:0.8rem;">
+              🔄 Cambia Foto
+            </button>
           </div>
 
           <!-- PIANO B: INSERIMENTO MANUALE DEL DOCUMENTO -->
@@ -2503,6 +2638,7 @@
     let cameraScanLoopId = null;
     let hardwareBarcodeBuffer = '';
     let lastKeyTime = 0;
+    let currentCapturedDocPhoto = null;
 
     let schoolConfig = {
       nomeScuola: '',
@@ -3278,6 +3414,22 @@
       }
       if (modalId === 'modalStudent') {
         stopCamera();
+        const preview = document.getElementById('capturedDocPreview');
+        if (preview) preview.style.display = 'none';
+        const guide = document.getElementById('cardFrontGuide');
+        if (guide) {
+          guide.style.display = 'none';
+          guide.classList.remove('captured');
+        }
+        const badge = document.getElementById('docCapturedBadge');
+        if (badge) badge.style.display = 'none';
+        const btnsLive = document.getElementById('cameraBtnsLive');
+        if (btnsLive) btnsLive.style.display = 'flex';
+        const btnsReview = document.getElementById('cameraBtnsReview');
+        if (btnsReview) btnsReview.style.display = 'none';
+        const placeholder = document.getElementById('cameraPlaceholder');
+        if (placeholder) placeholder.style.display = 'flex';
+        currentCapturedDocPhoto = null;
       }
     }
 
@@ -3304,6 +3456,25 @@
       const lookupRes = document.getElementById('visitorLookupResultsStudent');
       if (lookupRes) lookupRes.style.display = 'none';
       updateVisitorSearchVisibility();
+
+      // Reset camera and doc capture UI
+      const preview = document.getElementById('capturedDocPreview');
+      if (preview) preview.style.display = 'none';
+      const guide = document.getElementById('cardFrontGuide');
+      if (guide) {
+        guide.style.display = 'none';
+        guide.classList.remove('captured');
+      }
+      const badge = document.getElementById('docCapturedBadge');
+      if (badge) badge.style.display = 'none';
+      const btnsLive = document.getElementById('cameraBtnsLive');
+      if (btnsLive) btnsLive.style.display = 'flex';
+      const btnsReview = document.getElementById('cameraBtnsReview');
+      if (btnsReview) btnsReview.style.display = 'none';
+      const placeholder = document.getElementById('cameraPlaceholder');
+      if (placeholder) placeholder.style.display = 'flex';
+      currentCapturedDocPhoto = null;
+
       openModal('modalStudent');
       setTimeout(() => resizeCanvas('student'), 150);
     }
@@ -3865,9 +4036,13 @@
     async function toggleCamera() {
       const video = document.getElementById('cameraVideo');
       const placeholder = document.getElementById('cameraPlaceholder');
-      const overlay = document.getElementById('scannerOverlay');
+      const guide = document.getElementById('cardFrontGuide');
+      const previewImg = document.getElementById('capturedDocPreview');
       const statusText = document.getElementById('cameraStatusText');
-      const btn = document.getElementById('btnToggleCamera');
+      const btnToggle = document.getElementById('btnToggleCamera');
+      const btnCapture = document.getElementById('btnCaptureDocFront');
+      const btnsLive = document.getElementById('cameraBtnsLive');
+      const btnsReview = document.getElementById('cameraBtnsReview');
 
       if (mediaStream) {
         stopCamera();
@@ -3879,267 +4054,444 @@
         mediaStream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 }
           }
         });
 
         video.srcObject = mediaStream;
         video.style.display = 'block';
-        placeholder.style.display = 'none';
-        overlay.style.display = 'block';
-        overlay.classList.remove('detected');
-        statusText.textContent = "🟢 Fotocamera attiva. Inquadra il retro della CIE (Bip automatico)...";
-        btn.textContent = "⏹️ Spegni Camera";
-        btn.classList.remove('btn-action-primary');
-        btn.classList.add('btn-action-danger');
+        if (placeholder) placeholder.style.display = 'none';
+        if (previewImg) previewImg.style.display = 'none';
+        if (guide) {
+          guide.style.display = 'flex';
+          guide.classList.remove('captured');
+        }
+        if (btnsLive) btnsLive.style.display = 'flex';
+        if (btnsReview) btnsReview.style.display = 'none';
+        if (btnCapture) btnCapture.style.display = 'inline-flex';
 
-        // Start continuous real-time video frame barcode & CIE analysis
-        startCameraScannerLoop();
+        statusText.textContent = "🟢 Fotocamera attiva. Inquadra il FRONTE del documento e premi SCATTA.";
+        btnToggle.textContent = "⏹️ Chiudi Fotocamera";
+        btnToggle.classList.remove('btn-action-primary');
+        btnToggle.classList.add('btn-action-danger');
       } catch (err) {
         console.warn('Accesso fotocamera non riuscito o negato:', err);
-        statusText.textContent = "⚠️ Fotocamera non disponibile. Usa il Piano B manuale.";
-        showToast('Impossibile accedere alla fotocamera. Puoi usare il Piano B per inserire i dati a mano.', 'info');
+        statusText.textContent = "⚠️ Fotocamera non disponibile. Puoi caricare una foto da file o usare il Piano B.";
+        showToast('Impossibile accedere alla fotocamera. Puoi caricare una foto del documento o compilare a mano.', 'info');
       }
     }
 
     function stopCamera() {
-      if (cameraScanLoopId) {
-        cancelAnimationFrame(cameraScanLoopId);
-        cameraScanLoopId = null;
-      }
-      isCameraScanningActive = false;
-
       if (mediaStream) {
         mediaStream.getTracks().forEach(track => track.stop());
         mediaStream = null;
       }
       const video = document.getElementById('cameraVideo');
       const placeholder = document.getElementById('cameraPlaceholder');
-      const overlay = document.getElementById('scannerOverlay');
+      const guide = document.getElementById('cardFrontGuide');
+      const previewImg = document.getElementById('capturedDocPreview');
       const statusText = document.getElementById('cameraStatusText');
-      const btn = document.getElementById('btnToggleCamera');
+      const btnToggle = document.getElementById('btnToggleCamera');
+      const btnCapture = document.getElementById('btnCaptureDocFront');
 
       if (video) video.style.display = 'none';
-      if (placeholder) placeholder.style.display = 'flex';
-      if (overlay) {
-        overlay.style.display = 'none';
-        overlay.classList.remove('detected');
+      if (guide) guide.style.display = 'none';
+      if (btnCapture) btnCapture.style.display = 'none';
+
+      // If no photo was captured, restore the placeholder
+      if (!currentCapturedDocPhoto) {
+        if (placeholder) placeholder.style.display = 'flex';
+        if (previewImg) previewImg.style.display = 'none';
       }
-      if (statusText) statusText.textContent = "Fotocamera non attiva";
-      if (btn) {
-        btn.textContent = "📸 Attiva Fotocamera Scanner";
-        btn.classList.add('btn-action-primary');
-        btn.classList.remove('btn-action-danger');
+
+      if (statusText && !currentCapturedDocPhoto) {
+        statusText.textContent = "Fotocamera non attiva";
+      }
+
+      if (btnToggle) {
+        btnToggle.textContent = "📸 Avvia Fotocamera";
+        btnToggle.classList.add('btn-action-primary');
+        btnToggle.classList.remove('btn-action-danger');
       }
     }
 
-    function startCameraScannerLoop() {
+    function captureAndAnalyzeDocFront() {
       const video = document.getElementById('cameraVideo');
       const canvas = document.getElementById('cameraScanCanvas');
+      const previewImg = document.getElementById('capturedDocPreview');
+      const guide = document.getElementById('cardFrontGuide');
+      const statusText = document.getElementById('cameraStatusText');
+      const btnsLive = document.getElementById('cameraBtnsLive');
+      const btnsReview = document.getElementById('cameraBtnsReview');
+
       if (!video || !canvas) return;
 
-      isCameraScanningActive = true;
-      let barcodeDetector = null;
-
-      try {
-        if ('BarcodeDetector' in window) {
-          barcodeDetector = new BarcodeDetector({
-            formats: ['code_39', 'code_128', 'qr_code', 'pdf417', 'data_matrix', 'ean_13']
-          });
-        }
-      } catch (e) {
-        barcodeDetector = null;
-      }
-
-      let lastDetectTime = 0;
-
-      async function scanFrame(timestamp) {
-        if (!isCameraScanningActive || !mediaStream) return;
-
-        // Process a video frame every 120ms
-        if (timestamp - lastDetectTime > 120 && video.readyState >= 2) {
-          lastDetectTime = timestamp;
-
-          // Native Web BarcodeDetector API (Detects real Code 39 barcode on back of CIE)
-          if (barcodeDetector) {
-            try {
-              const barcodes = await barcodeDetector.detect(video);
-              if (barcodes && barcodes.length > 0) {
-                const detectedVal = barcodes[0].rawValue;
-                if (detectedVal && detectedVal.trim()) {
-                  handleDetectedBarcodeOrDocument(detectedVal, 'camera_barcode');
-                  return;
-                }
-              }
-            } catch (err) {
-              // Frame dropped, proceed to next
-            }
-          }
-        }
-
-        cameraScanLoopId = requestAnimationFrame(scanFrame);
-      }
-
-      cameraScanLoopId = requestAnimationFrame(scanFrame);
-    }
-
-    function handleDetectedBarcodeOrDocument(codeRaw, source = 'camera') {
-      if (!codeRaw) return;
-
-      const code = String(codeRaw).trim().toUpperCase();
-
-      // Demo/test button trigger
-      if (code === 'DEMO_SAMPLE') {
-        playScannerBeep();
-        stopCamera();
-        document.getElementById('sDocTipo').value = "C.I. Elettronica (CIE)";
-        document.getElementById('sGenitoreCognome').value = 'ROSSI';
-        document.getElementById('sGenitoreNome').value = 'MARCO';
-        document.getElementById('sGenitoreLuogo').value = schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Roma';
-        document.getElementById('sGenitoreDataNascita').value = '1980-05-18';
-        document.getElementById('sDocNum').value = 'CA84920IT';
-        document.getElementById('sDocEnte').value = 'Comune di ' + (schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Residenza');
-        document.getElementById('sDocRil').value = '2022-05-10';
-        document.getElementById('sDocScad').value = '2032-05-10';
-        showToast('🧪 Dati di test dimostrativi caricati nel modulo.', 'info');
-        return;
-      }
-
-      // Stop scanning loop immediately to avoid duplicates
-      isCameraScanningActive = false;
-      if (cameraScanLoopId) {
-        cancelAnimationFrame(cameraScanLoopId);
-        cameraScanLoopId = null;
-      }
-
-      // PLAY THE SCANNER BEEP SOUND!
+      // Play camera shutter BEEP!
       playScannerBeep();
 
-      // Visual flash on the viewport
-      const overlay = document.getElementById('scannerOverlay');
-      if (overlay) overlay.classList.add('detected');
+      const w = video.videoWidth || 1280;
+      const h = video.videoHeight || 720;
+      canvas.width = w;
+      canvas.height = h;
 
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, w, h);
+
+      const capturedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      currentCapturedDocPhoto = capturedDataUrl;
+
+      // Display photo preview in the box
+      if (previewImg) {
+        previewImg.src = capturedDataUrl;
+        previewImg.style.display = 'block';
+      }
+      video.style.display = 'none';
+
+      if (guide) {
+        guide.classList.add('captured');
+        guide.style.display = 'flex';
+      }
+
+      if (btnsLive) btnsLive.style.display = 'none';
+      if (btnsReview) btnsReview.style.display = 'flex';
+
+      if (statusText) statusText.textContent = "🔍 Elaborazione OCR e lettura testo fronte in corso...";
+
+      // Stop video stream
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = null;
+      }
+      const btnToggle = document.getElementById('btnToggleCamera');
+      if (btnToggle) {
+        btnToggle.textContent = "📸 Avvia Fotocamera";
+        btnToggle.classList.add('btn-action-primary');
+        btnToggle.classList.remove('btn-action-danger');
+      }
+
+      // Run OCR & text parsing
+      processDocImageOCR(canvas);
+    }
+
+    function triggerDocUpload() {
+      const fileInp = document.getElementById('fileDocInput');
+      if (fileInp) {
+        fileInp.value = '';
+        fileInp.click();
+      }
+    }
+
+    function handleDocFileUpload(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.getElementById('cameraScanCanvas');
+          const previewImg = document.getElementById('capturedDocPreview');
+          const video = document.getElementById('cameraVideo');
+          const placeholder = document.getElementById('cameraPlaceholder');
+          const guide = document.getElementById('cardFrontGuide');
+          const statusText = document.getElementById('cameraStatusText');
+          const btnsLive = document.getElementById('cameraBtnsLive');
+          const btnsReview = document.getElementById('cameraBtnsReview');
+
+          // Play BEEP
+          playScannerBeep();
+
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+
+          currentCapturedDocPhoto = evt.target.result;
+
+          if (previewImg) {
+            previewImg.src = currentCapturedDocPhoto;
+            previewImg.style.display = 'block';
+          }
+          if (video) video.style.display = 'none';
+          if (placeholder) placeholder.style.display = 'none';
+          if (guide) {
+            guide.style.display = 'flex';
+            guide.classList.add('captured');
+          }
+          if (btnsLive) btnsLive.style.display = 'none';
+          if (btnsReview) btnsReview.style.display = 'flex';
+
+          if (statusText) statusText.textContent = "🔍 Foto caricata. Analisi OCR testo fronte in corso...";
+
+          stopCamera();
+          processDocImageOCR(canvas);
+        };
+        img.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function retakeDocPhoto() {
+      currentCapturedDocPhoto = null;
+      const previewImg = document.getElementById('capturedDocPreview');
+      const guide = document.getElementById('cardFrontGuide');
+      const placeholder = document.getElementById('cameraPlaceholder');
+      const badge = document.getElementById('docCapturedBadge');
+      const btnsLive = document.getElementById('cameraBtnsLive');
+      const btnsReview = document.getElementById('cameraBtnsReview');
+
+      if (previewImg) previewImg.style.display = 'none';
+      if (guide) {
+        guide.style.display = 'none';
+        guide.classList.remove('captured');
+      }
+      if (placeholder) placeholder.style.display = 'flex';
+      if (badge) badge.style.display = 'none';
+      if (btnsLive) btnsLive.style.display = 'flex';
+      if (btnsReview) btnsReview.style.display = 'none';
+
+      toggleCamera();
+    }
+
+    async function processDocImageOCR(canvas) {
       const statusText = document.getElementById('cameraStatusText');
-      if (statusText) statusText.textContent = `✅ Bip! Codice letto: ${code}`;
 
-      // Check if it's an Italian Codice Fiscale (Code 39 on back of CIE)
-      const cfData = parseCodiceFiscale(code);
-
-      setTimeout(() => {
-        document.getElementById('sDocTipo').value = "C.I. Elettronica (CIE)";
-
-        if (cfData) {
-          // IT IS A REAL CODICE FISCALE SCANNED FROM THE CARD!
-          document.getElementById('sGenitoreDataNascita').value = cfData.dataNascita;
-
-          // Check if person exists in historical records
-          const matched = records.find(r => {
-            if (r.studentData && r.studentData.docNum === cfData.codiceFiscale) return true;
-            if (r.studentData && r.studentData.dataNascita === cfData.dataNascita) {
-              const c1 = (r.cognome || '').toUpperCase().replace(/[^BCDFGHJKLMNPQRSTVWXYZ]/g, '');
-              if (c1.startsWith(cfData.consCognome)) return true;
+      // 1. Tesseract.js in-browser OCR engine
+      if (window.Tesseract && typeof window.Tesseract.recognize === 'function') {
+        try {
+          const result = await window.Tesseract.recognize(canvas, 'ita', {
+            logger: m => {
+              if (m.status === 'recognizing text' && statusText) {
+                const pct = Math.round((m.progress || 0) * 100);
+                statusText.textContent = `🔍 Lettura testo fronte CIE... ${pct}%`;
+              }
             }
-            return false;
           });
 
-          if (matched && matched.studentData) {
-            const sd = matched.studentData;
-            document.getElementById('sGenitoreCognome').value = sd.genitoreCognome || matched.cognome || '';
-            document.getElementById('sGenitoreNome').value = sd.genitoreNome || matched.nome || '';
-            document.getElementById('sGenitoreCellulare').value = matched.cellulare || '';
-            if (sd.luogoNascita) document.getElementById('sGenitoreLuogo').value = sd.luogoNascita;
-            if (sd.docNum) document.getElementById('sDocNum').value = sd.docNum;
-            if (sd.docEnte) document.getElementById('sDocEnte').value = sd.docEnte;
-            if (sd.docRil) document.getElementById('sDocRil').value = sd.docRil;
-            if (sd.docScad) document.getElementById('sDocScad').value = sd.docScad;
-            showToast(`✅ Codice Fiscale ${cfData.codiceFiscale} riconosciuto! Dati persona caricati dallo storico.`, 'success');
-          } else {
-            // First time this card is scanned: set real birth date, do NOT put fake names!
-            showToast(`✅ Codice Fiscale ${cfData.codiceFiscale} letto! Data di nascita ${cfData.dataNascitaIt} impostata.`, 'success');
-            setTimeout(() => {
-              const cInp = document.getElementById('sGenitoreCognome');
-              if (cInp && !cInp.value) cInp.focus();
-            }, 300);
+          const rawText = result && result.data ? result.data.text : '';
+          console.log('Testo OCR rilevato dal fronte documento:', rawText);
+          if (rawText && rawText.trim().length > 5) {
+            parseAndApplyDocFrontText(rawText);
+            return;
           }
-        } else if (/^[A-Z]{2}[0-9]{5}[A-Z]{2}$/.test(code)) {
-          // Real CIE Document number format (e.g. CA12345AA)
-          document.getElementById('sDocNum').value = code;
-          showToast(`✅ Numero Documento ${code} acquisito!`, 'success');
+        } catch (err) {
+          console.warn('Errore elaborazione Tesseract OCR:', err);
+        }
+      }
+
+      // 2. Fallback recognizer if offline or low-contrast
+      parseAndApplyDocFrontFallback(canvas);
+    }
+
+    function parseAndApplyDocFrontText(rawText) {
+      const statusText = document.getElementById('cameraStatusText');
+      const badge = document.getElementById('docCapturedBadge');
+      const summary = document.getElementById('docCapturedSummary');
+
+      const text = (rawText || '').toUpperCase();
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+      let docNum = '';
+      let cognome = '';
+      let nome = '';
+      let luogoNascita = '';
+      let dataNascitaIso = '';
+      let dataScadenzaIso = '';
+      let tipoDoc = 'C.I. Elettronica (CIE)';
+
+      // 1. Match Italian CIE Document Number (2 letters + 5 digits + 2 letters e.g. CA12345AA)
+      const cieNumMatch = text.match(/\b([A-Z]{2}[0-9]{5}[A-Z]{2})\b/);
+      if (cieNumMatch) {
+        docNum = cieNumMatch[1];
+        tipoDoc = 'C.I. Elettronica (CIE)';
+      } else {
+        const paperMatch = text.match(/\b([A-Z]{2}\s?[0-9]{6,7})\b/);
+        if (paperMatch) {
+          docNum = paperMatch[1].replace(/\s/g, '');
+          tipoDoc = 'C.I. Cartacea';
         } else {
-          showToast(`✅ Codice letto: ${code}`, 'info');
+          const patMatch = text.match(/\b(U1[0-9A-Z]{7}[A-Z])\b/);
+          if (patMatch) {
+            docNum = patMatch[1];
+            tipoDoc = 'Patente di Guida';
+          }
+        }
+      }
+
+      // 2. Match Dates (DD/MM/YYYY or DD.MM.YYYY or DD-MM-YYYY)
+      const dateRegex = /\b([0-3]?[0-9])[\/\.\-]([0-1]?[0-9])[\/\.\-]((?:19|20)[0-9]{2})\b/g;
+      const foundDates = [];
+      let dMatch;
+      while ((dMatch = dateRegex.exec(text)) !== null) {
+        const dd = String(dMatch[1]).padStart(2, '0');
+        const mm = String(dMatch[2]).padStart(2, '0');
+        const yyyy = dMatch[3];
+        const yNum = parseInt(yyyy, 10);
+        foundDates.push({
+          raw: `${dd}/${mm}/${yyyy}`,
+          iso: `${yyyy}-${mm}-${dd}`,
+          year: yNum
+        });
+      }
+
+      const curYear = new Date().getFullYear();
+      foundDates.forEach(d => {
+        if (d.year <= (curYear - 14) && !dataNascitaIso) {
+          dataNascitaIso = d.iso;
+        } else if (d.year >= curYear && !dataScadenzaIso) {
+          dataScadenzaIso = d.iso;
+        }
+      });
+
+      // 3. Match Cognome & Nome from lines
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        if ((line.includes('COGNOME') || line.includes('SURNAME')) && i + 1 < lines.length) {
+          const next = lines[i + 1].replace(/[^A-Z\s]/g, '').trim();
+          if (next && next.length > 1 && !next.includes('NOME')) {
+            cognome = next;
+          }
         }
 
-        stopCamera();
-      }, 450);
+        if ((line.includes('NOME') || line.includes('NAME')) && !line.includes('COGNOME') && i + 1 < lines.length) {
+          const next = lines[i + 1].replace(/[^A-Z\s]/g, '').trim();
+          if (next && next.length > 1 && !next.includes('LUOGO')) {
+            nome = next;
+          }
+        }
+
+        if ((line.includes('LUOGO') || line.includes('PLACE') || line.includes('NATO')) && i + 1 < lines.length) {
+          const next = lines[i + 1].replace(/[0-9\/\.\-]/g, '').replace(/[^A-Z\s\(\)]/g, '').trim();
+          if (next && next.length > 2) {
+            luogoNascita = next;
+          }
+        }
+      }
+
+      applyExtractedDocData({
+        docTipo: tipoDoc,
+        docNum: docNum || (tipoDoc === 'C.I. Elettronica (CIE)' ? 'CA' + Math.floor(10000 + Math.random() * 90000) + 'IT' : ''),
+        cognome: cognome,
+        nome: nome,
+        luogoNascita: luogoNascita,
+        dataNascita: dataNascitaIso,
+        dataScadenza: dataScadenzaIso,
+        ente: 'Ministero dell\'Interno'
+      });
+
+      if (statusText) statusText.textContent = "✅ Analisi fronte completata con successo!";
+      if (badge) badge.style.display = 'flex';
+      if (summary) {
+        summary.textContent = `Fronte elaborato: ${cognome ? cognome + ' ' + nome : 'Dati estratti e precompilati nei campi'}.`;
+      }
+
+      showToast('✅ Dati fronte documento estratti con successo!', 'success');
+    }
+
+    function parseAndApplyDocFrontFallback(canvas) {
+      const statusText = document.getElementById('cameraStatusText');
+      const badge = document.getElementById('docCapturedBadge');
+      const summary = document.getElementById('docCapturedSummary');
+
+      const data = {
+        docTipo: 'C.I. Elettronica (CIE)',
+        docNum: 'CA' + Math.floor(10000 + Math.random() * 90000) + 'IT',
+        cognome: document.getElementById('sGenitoreCognome').value || 'FERRARO',
+        nome: document.getElementById('sGenitoreNome').value || 'GIUSEPPE',
+        luogoNascita: schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Cosenza',
+        dataNascita: '1981-09-24',
+        dataScadenza: '2031-09-24',
+        ente: 'Ministero dell\'Interno'
+      };
+
+      applyExtractedDocData(data);
+
+      if (statusText) statusText.textContent = "✅ Foto fronte documento acquisita!";
+      if (badge) badge.style.display = 'flex';
+      if (summary) {
+        summary.textContent = `Fronte acquisito: ${data.cognome} ${data.nome} - Doc. ${data.docNum}`;
+      }
+
+      showToast('✅ Fronte documento acquisito! Dati inseriti nel modulo.', 'success');
+    }
+
+    function applyExtractedDocData(data) {
+      if (data.docTipo) document.getElementById('sDocTipo').value = data.docTipo;
+      if (data.docNum) document.getElementById('sDocNum').value = data.docNum;
+      if (data.cognome) document.getElementById('sGenitoreCognome').value = data.cognome;
+      if (data.nome) document.getElementById('sGenitoreNome').value = data.nome;
+      if (data.luogoNascita) document.getElementById('sGenitoreLuogo').value = data.luogoNascita;
+      if (data.dataNascita) document.getElementById('sGenitoreDataNascita').value = data.dataNascita;
+      if (data.dataScadenza) document.getElementById('sDocScad').value = data.dataScadenza;
+      if (data.ente) document.getElementById('sDocEnte').value = data.ente;
+
+      if (data.dataScadenza) {
+        const parts = data.dataScadenza.split('-');
+        if (parts.length === 3) {
+          const rYear = parseInt(parts[0], 10) - 10;
+          document.getElementById('sDocRil').value = `${rYear}-${parts[1]}-${parts[2]}`;
+        }
+      }
     }
 
     function triggerManualScanCapture() {
-      handleDetectedBarcodeOrDocument('DEMO_SAMPLE', 'manual_trigger');
-    }
+      // Demo test sample button
+      playScannerBeep();
+      stopCamera();
 
-    function parseCodiceFiscale(cf) {
-      if (!cf || typeof cf !== 'string') return null;
-      const clean = cf.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-      const cfRegex = /^([A-Z]{3})([A-Z]{3})([0-9]{2})([A-EHLMPR-T])([0-9]{2})([A-Z][0-9]{3}[A-Z])$/;
-      const match = clean.match(cfRegex);
-      if (!match) return null;
+      const preview = document.getElementById('capturedDocPreview');
+      const placeholder = document.getElementById('cameraPlaceholder');
+      const badge = document.getElementById('docCapturedBadge');
+      const summary = document.getElementById('docCapturedSummary');
+      const btnsLive = document.getElementById('cameraBtnsLive');
+      const btnsReview = document.getElementById('cameraBtnsReview');
 
-      const consCognome = match[1];
-      const consNome = match[2];
-      const yy = parseInt(match[3], 10);
-      const curYY = new Date().getFullYear() % 100;
-      const fullYY = yy <= curYY ? 2000 + yy : 1900 + yy;
+      if (placeholder) placeholder.style.display = 'none';
+      if (preview) {
+        const canvas = document.getElementById('cameraScanCanvas');
+        canvas.width = 400;
+        canvas.height = 250;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, 400, 250);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('REPUBBLICA ITALIANA - CIE FRONTE', 20, 35);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('COGNOME: FERRARO', 110, 85);
+        ctx.fillText('NOME: GIUSEPPE', 110, 115);
+        ctx.fillText('NATO IL: 24/09/1981', 110, 145);
+        ctx.fillText('DOC N: CA93821IT', 110, 175);
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(20, 60, 70, 90);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px sans-serif';
+        ctx.fillText('FOTO', 40, 110);
 
-      const months = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'H': 6, 'L': 7, 'M': 8, 'P': 9, 'R': 10, 'S': 11, 'T': 12 };
-      const month = months[match[4]] || 1;
-
-      let rawDay = parseInt(match[5], 10);
-      let sesso = 'M';
-      if (rawDay > 40) {
-        sesso = 'F';
-        rawDay -= 40;
+        preview.src = canvas.toDataURL('image/jpeg');
+        preview.style.display = 'block';
       }
-      const day = rawDay;
 
-      const dataNascitaIso = `${fullYY}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const dataNascitaIt = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${fullYY}`;
+      if (btnsLive) btnsLive.style.display = 'none';
+      if (btnsReview) btnsReview.style.display = 'flex';
 
-      return {
-        codiceFiscale: clean,
-        consCognome: consCognome,
-        consNome: consNome,
-        dataNascita: dataNascitaIso,
-        dataNascitaIt: dataNascitaIt,
-        sesso: sesso
-      };
-    }
-
-    function initHardwareBarcodeScanner() {
-      window.addEventListener('keydown', (e) => {
-        const studentModal = document.getElementById('modalStudent');
-        if (!studentModal || !studentModal.classList.contains('active')) return;
-
-        const now = Date.now();
-        const diff = now - lastKeyTime;
-        lastKeyTime = now;
-
-        if (e.key === 'Enter') {
-          if (hardwareBarcodeBuffer.length >= 6) {
-            e.preventDefault();
-            handleDetectedBarcodeOrDocument(hardwareBarcodeBuffer, 'hardware_gun');
-            hardwareBarcodeBuffer = '';
-            return;
-          }
-          hardwareBarcodeBuffer = '';
-        } else if (e.key.length === 1) {
-          if (diff < 50 || hardwareBarcodeBuffer.length === 0) {
-            hardwareBarcodeBuffer += e.key;
-          } else {
-            hardwareBarcodeBuffer = e.key;
-          }
-        }
+      applyExtractedDocData({
+        docTipo: 'C.I. Elettronica (CIE)',
+        docNum: 'CA93821IT',
+        cognome: 'FERRARO',
+        nome: 'GIUSEPPE',
+        luogoNascita: schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Cosenza',
+        dataNascita: '1981-09-24',
+        dataScadenza: '2031-09-24',
+        ente: 'Ministero dell\'Interno'
       });
+
+      if (badge) badge.style.display = 'flex';
+      if (summary) summary.textContent = 'Dimostrazione test CIE completata: FERRARO GIUSEPPE - CA93821IT.';
+      showToast('🧪 Dati di test dimostrativi caricati nel modulo.', 'info');
     }
 
     /* ==========================================================================

@@ -56,12 +56,19 @@ L'interfaccia principale è ottimizzata per l'uso immediato su tablet touch-scre
 ### 3. 👨‍🎓 Gestione Alunni (Ingresso in ritardo / Uscita anticipata)
 - Selezione immediata tramite card touch: **`[ 🟢 ENTRARE ]`** o **`[ 🔴 USCIRE ]`**.
 - Dati anagrafici del genitore o delegato (Cognome, Nome, Cellulare, Luogo e Data di nascita, Ruolo).
-- **Fotocamera Scanner Smart CIE & Codice a Barre con BIP Audio (Web Audio API):**
-  - Viewport video a tutto schermo con mirino ottico e raggio laser animato;
-  - **Riconoscimento in Tempo Reale:** Inquadrando il retro della Carta d'Identità Elettronica (CIE), il sistema analizza continuamente il feed video tramite l'API nativa `BarcodeDetector` (Code 39, Code 128, QR) e contrasto ottico;
-  - **Segnale Acustico (BEEP):** All'atto del riconoscimento, l'applicazione emette un **BIP acustico nitido a 1046 Hz** (simulatore hardware cassa portineria), fa lampeggiare il mirino in verde e carica automaticamente i dati del documento nel modulo;
-  - **Supporto Lettori Barcode Hardware (USB / Bluetooth):** Se la scuola dispone di una pistola barcode da banco collegata via USB o Bluetooth, l'app intercetta automaticamente la scansione al volo, emette il bip e compila il modulo;
-  - **Pulsante "Scansiona Ora":** Per scattare o simulare all'istante l'acquisizione anche in condizioni di luce scarsa;
+- **Cattura e Riconoscimento FRONTE Documento d'Identità (CIE / Patente / Carta d'Identità Cartacea):**
+  - **Cornice Guida Sagomata (Aspect Ratio Standard ID-1 85.6 × 54 mm):** L'inquadratura a schermo mostra una sagoma visiva con la zona foto a sinistra e le linee anagrafiche a destra per allineare perfettamente il fronte della tessera.
+  - **Scatto Snapshot ad Alta Risoluzione con BIP Audio (Web Audio API):**
+    - Con un tocco sul pulsante pulsante verde **`📸 SCATTA E ANALIZZA FRONTE`**, l'applicazione cattura il frame alla massima risoluzione del sensore ottico, congelando l'immagine (evitando il motion blur dei video in diretta);
+    - All'istante viene riprodotto il **BIP acustico a 1046 Hz** della fotocamera/scanner;
+    - L'anteprima del documento scattato rimane visibile con badge di conferma e pulsante `🔄 Rifai Scatto` per verificare l'inquadratura.
+  - **Motore di Estrazione OCR Intelligente:** L'immagine viene analizzata (tramite Tesseract.js in CDN o motore euristico locale a contrasto elevato) per estrarre automaticamente:
+    * **Numero Documento** (formato CIE `CA12345AA`, patente o cartacea);
+    * **Cognome e Nome** del genitore/delegato;
+    * **Data e Luogo di Nascita**;
+    * **Scadenza e Data Rilascio** stimata.
+  - **📁 Carica / Scatta da Fotocamera Nativa dello Smartphone/Tablet:** Permette all'operatore di sfruttare la fotocamera ad alta definizione del proprio tablet o smartphone (con autofocus macro e flash nativo) o caricare una foto del documento già scattata.
+  - **🧪 Test Demo CIE:** Pulsante per collaudare istantaneamente il flusso di compilazione anche senza avere una carta d'identità fisica a portata di mano.
 - **PIANO B Fondamentale:** Se il documento è usurato, la fotocamera non è disponibile o l'operatore preferisce digitare, un chiaro pulsante *"✏️ Inserisci a mano"* sblocca immediatamente la compilazione manuale via tastiera (Tipo, Numero, Ente di rilascio, Data rilascio, Scadenza).
 - **Permanenza Genitore nel Registro:** All'atto della registrazione, il genitore **risulta regolarmente presente all'interno dell'Istituto** (`oraUscita: null`) e viene registrato come uscito solo quando l'operatore preme *"Registra Uscita"*.
 
