@@ -1,0 +1,3827 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title id="pageTitle">Portineria Digitale Scolastica</title>
+  
+  <!-- PWA Meta Tags & Inline Manifest -->
+  <meta name="theme-color" content="#1a365d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Portineria">
+  <meta name="description" content="Gestione portineria, accessi visitatori e moduli ingresso/uscita alunni per Istituti Scolastici">
+  <link rel="manifest" href='data:application/manifest+json,{"name":"Portineria Digitale Scolastica","short_name":"Portineria","start_url":".","display":"standalone","background_color":"#f0f4f8","theme_color":"#1a365d","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Crect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%231a365d%22/%3E%3Cpath d=%22M50 20 L20 40 L30 40 L30 80 L70 80 L70 40 L80 40 Z%22 fill=%22white%22/%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}'>
+
+  <style>
+    /* ==========================================================================
+       RESET & BASE STYLES
+       ========================================================================== */
+    :root {
+      --primary: #1a365d;
+      --primary-light: #2b6cb0;
+      --primary-dark: #0f233d;
+      --secondary: #2b6cb0;
+      --accent: #d69e2e;
+      --accent-hover: #b7791f;
+      --success: #276749;
+      --success-light: #38a169;
+      --danger: #c53030;
+      --danger-light: #e53e3e;
+      --warning: #dd6b20;
+      --bg: #f0f4f8;
+      --card-bg: #ffffff;
+      --text-main: #1a202c;
+      --text-muted: #4a5568;
+      --border: #e2e8f0;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.12), 0 4px 6px -2px rgba(0,0,0,0.07);
+      --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.15), 0 10px 10px -5px rgba(0,0,0,0.08);
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      line-height: 1.5;
+    }
+
+    /* ==========================================================================
+       SCREEN 1: ONBOARDING & SETUP WIZARD (SHOWN FIRST IF NOT CONFIGURED)
+       ========================================================================== */
+    .wizard-container {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f233d 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .wizard-card {
+      background: #ffffff;
+      width: 100%;
+      max-width: 820px;
+      border-radius: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .wizard-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #ffffff;
+      padding: 32px 36px 28px 36px;
+      text-align: center;
+      position: relative;
+    }
+
+    .wizard-header-icon {
+      font-size: 54px;
+      margin-bottom: 12px;
+      display: inline-block;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+    }
+
+    .wizard-header h2 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+
+    .wizard-header p {
+      font-size: 0.95rem;
+      opacity: 0.88;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .wizard-body {
+      padding: 36px;
+    }
+
+    .wizard-sample-box {
+      background: #f0fff4;
+      border: 1.5px solid #c6f6d5;
+      padding: 12px 18px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .wizard-sample-box span {
+      font-size: 0.9rem;
+      color: #22543d;
+      font-weight: 600;
+    }
+
+    /* ==========================================================================
+       HEADER & NAVIGATION (SCREEN 2)
+       ========================================================================== */
+    .app-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #ffffff;
+      padding: 16px 24px;
+      box-shadow: var(--shadow-md);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .institute-info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+    }
+
+    .institute-logo {
+      width: 52px;
+      height: 52px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      flex-shrink: 0;
+    }
+
+    .institute-titles h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
+    }
+
+    .institute-titles p {
+      font-size: 0.82rem;
+      opacity: 0.85;
+      margin-top: 2px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .live-clock-badge {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      padding: 6px 14px;
+      border-radius: 20px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .live-clock-time {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: block;
+      color: #ffeb3b;
+    }
+
+    .live-clock-date {
+      font-size: 0.75rem;
+      opacity: 0.9;
+      text-transform: capitalize;
+    }
+
+    .btn-header-tool {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-header-tool:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-1px);
+    }
+
+    /* ==========================================================================
+       MAIN LAYOUT & STATS (SCREEN 2)
+       ========================================================================== */
+    .app-main {
+      flex: 1;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .stat-icon.present { background: #e6fffa; color: #234e52; }
+    .stat-icon.total { background: #ebf8ff; color: #2b6cb0; }
+    .stat-icon.students { background: #fefcbf; color: #744210; }
+    .stat-icon.exits { background: #feebc8; color: #7b341e; }
+
+    .stat-details {
+      flex: 1;
+    }
+
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1.1;
+      color: var(--text-main);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* ==========================================================================
+       HERO TOUCH ACTION BUTTONS (MOCKUP EXACT SIZING)
+       ========================================================================== */
+    .hero-actions-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .hero-btn-large {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 34px 28px;
+      border-radius: 20px;
+      border: none;
+      cursor: pointer;
+      color: #ffffff;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+      min-height: 180px;
+    }
+
+    .hero-btn-large::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.12), rgba(0,0,0,0.06));
+      pointer-events: none;
+    }
+
+    .hero-btn-large:hover {
+      transform: translateY(-4px) scale(1.008);
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.18);
+    }
+
+    .hero-btn-large:active {
+      transform: translateY(1px);
+    }
+
+    .hero-btn-visitor {
+      background: linear-gradient(135deg, #0d47a1 0%, #1565c0 45%, #1976d2 100%);
+    }
+
+    .hero-btn-student {
+      background: linear-gradient(135deg, #004d40 0%, #00695c 45%, #00796b 100%);
+    }
+
+    .hero-btn-large .hero-btn-icon-top {
+      font-size: 50px;
+      margin-bottom: 14px;
+      filter: drop-shadow(0 3px 6px rgba(0,0,0,0.25));
+      line-height: 1;
+      display: block;
+    }
+
+    .hero-btn-large h3 {
+      font-size: 1.35rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      line-height: 1.25;
+    }
+
+    .hero-btn-large p {
+      font-size: 0.92rem;
+      opacity: 0.9;
+      font-weight: 400;
+      line-height: 1.35;
+      max-width: 90%;
+    }
+
+    .hero-btn-exit-bar {
+      grid-column: 1 / -1;
+      width: 100%;
+      background: linear-gradient(90deg, #e65100 0%, #f57c00 50%, #e65100 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 20px;
+      padding: 16px 24px;
+      min-height: 64px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      box-shadow: 0 8px 20px rgba(230, 81, 0, 0.32);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-btn-exit-bar:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 26px rgba(230, 81, 0, 0.42);
+      filter: brightness(1.04);
+    }
+
+    .hero-btn-exit-bar:active {
+      transform: translateY(1px);
+    }
+
+    .hero-btn-exit-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hero-exit-badge-pill {
+      background: #ffffff;
+      color: #e65100;
+      font-weight: 900;
+      font-size: 1.15rem;
+      min-width: 38px;
+      height: 38px;
+      padding: 0 10px;
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    .hero-exit-badge-text {
+      font-size: 1.05rem;
+      font-weight: 600;
+      opacity: 0.95;
+    }
+
+    /* ==========================================================================
+       DAILY REGISTER SECTION
+       ========================================================================== */
+    .register-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .register-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      background: #fafbfc;
+    }
+
+    .register-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .register-title h2 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .register-title .badge {
+      background: var(--primary-light);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+    }
+
+    .register-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-input-wrapper {
+      position: relative;
+    }
+
+    .search-input {
+      padding: 8px 12px 8px 36px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.88rem;
+      width: 220px;
+      transition: all 0.2s;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      width: 260px;
+      box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #a0aec0;
+      font-size: 14px;
+    }
+
+    .btn-action {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-action-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-action-primary:hover {
+      background: var(--primary-light);
+    }
+
+    .btn-action-secondary {
+      background: #edf2f7;
+      color: var(--text-main);
+      border-color: var(--border);
+    }
+    .btn-action-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-action-danger {
+      background: #fff5f5;
+      color: var(--danger);
+      border-color: #feb2b2;
+    }
+    .btn-action-danger:hover {
+      background: #fed7d7;
+    }
+
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .table-register {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      text-align: left;
+    }
+
+    .table-register th {
+      background: #f7fafc;
+      color: #4a5568;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+      padding: 12px 16px;
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .table-register td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .table-register tr:hover {
+      background-color: #f8fafc;
+    }
+
+    .table-register tr.status-inside {
+      background-color: #f0fff4;
+    }
+    .table-register tr.status-inside:hover {
+      background-color: #e6fffa;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .status-pill.inside {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+
+    .status-pill.inside::before {
+      content: '';
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #38a169;
+      animation: pulse-green 1.5s infinite;
+    }
+
+    @keyframes pulse-green {
+      0% { transform: scale(0.95); opacity: 0.7; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.7; }
+    }
+
+    .status-pill.exited {
+      background: #edf2f7;
+      color: #4a5568;
+    }
+
+    .signature-thumbnail {
+      width: 60px;
+      height: 28px;
+      object-fit: contain;
+      background: #fff;
+      border: 1px solid #cbd5e0;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-quick-exit {
+      background: #dd6b20;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.2s;
+    }
+
+    .btn-quick-exit:hover {
+      background: #c05621;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: #718096;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.6;
+    }
+
+    /* ==========================================================================
+       MODALS & FORMS
+       ========================================================================== */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-overlay.active {
+      display: flex !important;
+    }
+
+    .modal-dialog {
+      background: #ffffff;
+      width: 100%;
+      max-width: 780px;
+      max-height: 94vh;
+      border-radius: 16px;
+      box-shadow: var(--shadow-xl);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalPop {
+      from { transform: translateY(20px) scale(0.97); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .modal-dialog-large {
+      max-width: 900px;
+    }
+
+    .modal-header {
+      padding: 18px 24px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-close-btn {
+      background: transparent;
+      border: none;
+      font-size: 24px;
+      line-height: 1;
+      color: #718096;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .modal-close-btn:hover {
+      background: #e2e8f0;
+      color: var(--text-main);
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .form-group-full {
+      grid-column: span 2;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .form-group label .required {
+      color: var(--danger);
+      margin-left: 2px;
+    }
+
+    .form-control {
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      background-color: #fff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15);
+    }
+
+    .signature-container {
+      margin-top: 8px;
+      border: 2px dashed #cbd5e0;
+      border-radius: 10px;
+      background: #ffffff;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .signature-canvas {
+      width: 100%;
+      height: 160px;
+      display: block;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .signature-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 12px;
+      background: #f7fafc;
+      border-top: 1px solid #e2e8f0;
+      font-size: 0.8rem;
+      color: #718096;
+    }
+
+    .btn-clear-sig {
+      background: #edf2f7;
+      border: 1px solid #cbd5e0;
+      color: #4a5568;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-clear-sig:hover {
+      background: #e2e8f0;
+      color: var(--danger);
+    }
+
+    .camera-scanner-box {
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      background: #0f172a;
+      overflow: hidden;
+      margin-bottom: 20px;
+      position: relative;
+      color: #fff;
+    }
+
+    .camera-viewport-wrapper {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #cameraVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .camera-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      color: #94a3b8;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .scanner-overlay {
+      position: absolute;
+      top: 15px;
+      left: 20px;
+      right: 20px;
+      bottom: 15px;
+      border: 2px dashed rgba(255, 255, 255, 0.7);
+      border-radius: 12px;
+      pointer-events: none;
+      display: none;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+    }
+
+    .scanner-laser {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #ef4444, #ffeb3b, #ef4444, transparent);
+      box-shadow: 0 0 8px #ef4444;
+      animation: scanLaser 2s infinite ease-in-out;
+    }
+
+    @keyframes scanLaser {
+      0% { top: 5%; }
+      50% { top: 95%; }
+      100% { top: 5%; }
+    }
+
+    .scanner-tip {
+      position: absolute;
+      bottom: 8px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 0.78rem;
+      background: rgba(0,0,0,0.6);
+      padding: 3px 0;
+      color: #f1f5f9;
+      pointer-events: none;
+    }
+
+    .camera-controls-bar {
+      padding: 12px 16px;
+      background: #1e293b;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .camera-status-text {
+      font-size: 0.82rem;
+      color: #94a3b8;
+    }
+
+    .camera-btns-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .piano-b-banner {
+      background: #fffaf0;
+      border: 1.5px solid #feebc8;
+      border-left: 5px solid var(--accent);
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .piano-b-text {
+      font-size: 0.85rem;
+      color: #7b341e;
+    }
+
+    .piano-b-text strong {
+      display: block;
+      font-size: 0.9rem;
+      color: #9c4221;
+    }
+
+    .action-type-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .action-toggle-card {
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .action-toggle-card input[type="radio"] {
+      display: none;
+    }
+
+    .action-toggle-card .icon {
+      font-size: 26px;
+    }
+
+    .action-toggle-card .title {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .action-toggle-card.selected-enter {
+      border-color: #38a169;
+      background: #f0fff4;
+      color: #22543d;
+      box-shadow: 0 0 0 2px rgba(56, 161, 105, 0.2);
+    }
+
+    .action-toggle-card.selected-exit {
+      border-color: #e53e3e;
+      background: #fff5f5;
+      color: #742a2a;
+      box-shadow: 0 0 0 2px rgba(229, 62, 62, 0.2);
+    }
+
+    .school-branches-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .branch-radio-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      background: #fafbfc;
+      transition: all 0.15s;
+    }
+
+    .branch-radio-label:hover {
+      background: #edf2f7;
+    }
+
+    .branch-radio-label input[type="radio"] {
+      accent-color: var(--primary);
+    }
+
+    .courses-tag-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      min-height: 48px;
+      padding: 10px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      background: #fafbfc;
+    }
+
+    .course-chip {
+      background: #ebf8ff;
+      color: #2b6cb0;
+      border: 1px solid #bee3f8;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .course-chip-remove {
+      background: transparent;
+      border: none;
+      color: #e53e3e;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 16px;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: 50%;
+    }
+
+    .course-chip-remove:hover {
+      background: #fed7d7;
+    }
+
+    .present-visitors-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .present-visitor-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-left: 5px solid #38a169;
+      border-radius: 10px;
+      background: #fff;
+      transition: background 0.2s;
+    }
+
+    .present-visitor-item:hover {
+      background: #f7fafc;
+    }
+
+    .pv-info h4 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .pv-meta {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .pv-meta span {
+      margin-right: 12px;
+    }
+
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: #2d3748;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      box-shadow: var(--shadow-lg);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+      animation: slideInRight 0.3s ease;
+      max-width: 400px;
+    }
+
+    .toast.success { background: #276749; }
+    .toast.error { background: #9b2c2c; }
+    .toast.info { background: #2b6cb0; }
+
+    @keyframes slideInRight {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ==========================================================================
+       PIN PROMPT MODAL, TOUCH NUMPAD & PRIVACY SHIELD
+       ========================================================================== */
+    .pin-display-wrapper {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin: 18px 0 24px 0;
+    }
+
+    .pin-circle {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #a0aec0;
+      background: #ffffff;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .pin-circle.filled {
+      background: var(--primary);
+      border-color: var(--primary);
+      transform: scale(1.2);
+      box-shadow: 0 0 10px rgba(26, 54, 93, 0.35);
+    }
+
+    .numpad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      max-width: 310px;
+      margin: 0 auto 12px auto;
+    }
+
+    .btn-numpad {
+      height: 62px;
+      border-radius: 14px;
+      border: 1.5px solid #e2e8f0;
+      background: #f8fafc;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .btn-numpad:hover {
+      background: #edf2f7;
+      border-color: #cbd5e0;
+      transform: translateY(-2px);
+    }
+
+    .btn-numpad:active {
+      transform: translateY(1px);
+      background: #e2e8f0;
+    }
+
+    .btn-numpad.action-del {
+      font-size: 1.15rem;
+      color: var(--danger);
+      background: #fff5f5;
+      border-color: #feb2b2;
+    }
+
+    .btn-numpad.action-del:hover {
+      background: #fed7d7;
+    }
+
+    .btn-numpad.action-ok {
+      font-size: 1.15rem;
+      color: #ffffff;
+      background: var(--primary);
+      border-color: var(--primary-dark);
+    }
+
+    .btn-numpad.action-ok:hover {
+      background: var(--primary-light);
+    }
+
+    @keyframes shakePin {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+
+    .shake {
+      animation: shakePin 0.4s ease-in-out;
+    }
+
+    /* ==========================================================================
+       PRINT TEMPLATES & PRINT STYLES
+       ========================================================================== */
+    .print-only-container {
+      display: none;
+    }
+
+    #print-module-container {
+      font-family: 'Times New Roman', Times, serif, Arial, sans-serif;
+      font-size: 14px;
+      color: #000;
+      line-height: 1.4;
+      background: #fff;
+    }
+
+    #print-module-container .container {
+      max-width: 700px;
+      margin: 0 auto;
+      border: 1px solid #ccc;
+      padding: 30px;
+    }
+
+    #print-module-container .header {
+      text-align: right;
+      font-size: 13px;
+      margin-bottom: 25px;
+    }
+
+    #print-module-container .header b {
+      display: block;
+    }
+
+    #print-module-container .title {
+      text-align: center;
+      font-weight: bold;
+      font-size: 15px;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+
+    #print-module-container .field-line {
+      border-bottom: 1px dotted #000;
+      display: inline-block;
+      min-height: 18px;
+      padding: 0 5px;
+    }
+
+    #print-module-container .row {
+      margin-bottom: 12px;
+    }
+
+    #print-module-container .checkbox-group {
+      margin: 10px 0 10px 20px;
+    }
+
+    #print-module-container .checkbox-item {
+      margin-bottom: 5px;
+    }
+
+    #print-module-container .box-motivazione {
+      border: 1px solid #000;
+      padding: 10px;
+      min-height: 50px;
+      margin-top: 5px;
+    }
+
+    #print-module-container .footer-section {
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    #print-module-container .signature-box {
+      text-align: center;
+      width: 250px;
+    }
+
+    #print-module-container .signature-img {
+      max-width: 200px;
+      max-height: 60px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    #print-register-container {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #000;
+      background: #fff;
+      padding: 0;
+    }
+
+    .print-register-header {
+      text-align: center;
+      margin-bottom: 14px;
+      border-bottom: 2px solid #000;
+      padding-bottom: 8px;
+    }
+
+    .print-register-header h2 {
+      font-size: 15pt;
+      font-weight: bold;
+      margin-bottom: 3px;
+    }
+
+    .print-register-header h3 {
+      font-size: 12pt;
+      font-weight: normal;
+    }
+
+    .print-register-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5pt;
+    }
+
+    .print-register-table th,
+    .print-register-table td {
+      border: 1px solid #000;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .print-register-table th {
+      background: #e2e8f0 !important;
+      font-weight: bold;
+      font-size: 9pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .print-register-table td img {
+      max-height: 35px;
+      max-width: 90px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    @media print {
+      body {
+        background: #fff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+
+      #screenWizard,
+      #screenDashboard,
+      .app-header,
+      .app-main,
+      .modal-overlay,
+      .toast-container,
+      .no-print {
+        display: none !important;
+      }
+
+      body.print-mode-module {
+        font-family: 'Times New Roman', Times, serif, Arial, sans-serif !important;
+      }
+      body.print-mode-module #print-module-container {
+        display: block !important;
+        padding: 0 !important;
+      }
+      body.print-mode-module #print-module-container .container {
+        border: none !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+      }
+
+      body.print-mode-register #print-register-container {
+        display: block !important;
+        width: 100% !important;
+      }
+    }
+
+    @page {
+      size: auto;
+      margin: 10mm;
+    }
+
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .header-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      .form-group-full {
+        grid-column: span 1;
+      }
+      .hero-actions-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       SCREEN 1: SCHERMATA WIZARD CONFIGURAZIONE SCUOLA (VISTA PRINCIPALE AL PRIMO AVVIO)
+       ========================================================================== -->
+  <div id="screenWizard" class="wizard-container" style="display: none;">
+    <div class="wizard-card">
+      <div class="wizard-header">
+        <span class="wizard-header-icon">🏫</span>
+        <h2 id="wizardTitle">Benvenuto in Portineria Digitale!</h2>
+        <p id="wizardSubtitle">Per iniziare, inserisci il nome del tuo Istituto Scolastico e gli indirizzi di studio o plessi presenti.</p>
+      </div>
+
+      <div class="wizard-body">
+        <!-- TEST RAPIDO BANNER -->
+        <div class="wizard-sample-box">
+          <span>💡 Vuoi provare subito con dati reali?</span>
+          <button type="button" class="btn-action btn-action-secondary" onclick="fillSampleSchoolConfig()" style="background:#fff; border-color:#38a169; color:#22543d; font-weight:700;">
+            ⚡ Carica Esempio (I.I.S. Mattei Castrovillari)
+          </button>
+        </div>
+
+        <form id="formSchoolConfigWizard" onsubmit="saveSchoolConfig(event)">
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label style="font-size: 0.95rem;">Nome Completo dell'Istituto Superiore / Scuola <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="text" id="cfgSchoolName" class="form-control" required placeholder="Es. I.I.S. 'E. Mattei'">
+            </div>
+
+            <div class="form-group form-group-full">
+              <label style="font-size: 0.95rem;">Città / Sede Principale (opzionale)</label>
+              <input type="text" id="cfgSchoolCity" class="form-control" placeholder="Es. Castrovillari (CS)">
+            </div>
+
+            <div class="form-group form-group-full" style="margin-top: 10px;">
+              <label style="font-size: 0.95rem;">Indirizzi di Studio / Sedi / Plessi dell'Istituto <span class="required" style="color:var(--danger);">*</span></label>
+              <p style="font-size:0.82rem; color:#718096; margin-bottom:8px;">
+                All'inizio la lista è vuota. Digita ciascun indirizzo e tocca <strong>"Aggiungi"</strong> (o premi Invio).
+              </p>
+              
+              <div style="display:flex; gap:10px;">
+                <input type="text" id="cfgCourseInput" class="form-control" placeholder="Es. Liceo Scientifico, Liceo Classico, Liceo Linguistico...">
+                <button type="button" class="btn-action btn-action-primary" onclick="addCourseFromInput()" style="padding:10px 20px; font-size:0.95rem;">
+                  ➕ Aggiungi
+                </button>
+              </div>
+
+              <!-- CHIPS LIST OF COURSES -->
+              <div class="courses-tag-container" id="cfgCoursesListContainer">
+                <span id="cfgNoCoursesMsg" style="color:#a0aec0; font-size:0.88rem; font-style:italic;">
+                  Nessun indirizzo inserito. Digita un indirizzo sopra e tocca "Aggiungi".
+                </span>
+              </div>
+            </div>
+
+            <!-- PIN DI SICUREZZA PER PERSONALE SCOLASTICO -->
+            <div class="form-group form-group-full" style="margin-top: 14px; background: #f8fafc; padding: 16px 20px; border-radius: 12px; border: 1.5px solid #e2e8f0;">
+              <label style="font-size: 0.95rem; color: var(--primary);">🔒 PIN di Sicurezza per il Personale Scolastico <span style="font-size:0.82rem; font-weight:normal; color:#718096;">(default: 1234)</span></label>
+              <p style="font-size: 0.82rem; color: #718096; margin-bottom: 8px;">
+                Protegge il registro accessi e le funzioni riservate dalla vista dei visitatori (conforme GDPR).
+              </p>
+              <input type="password" id="cfgSchoolPin" class="form-control" maxlength="6" value="1234" placeholder="Es. 1234" style="max-width: 220px; font-size: 1.25rem; letter-spacing: 6px; text-align: center;">
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:32px; border-top:1px solid #e2e8f0; padding-top:20px; gap:12px; flex-wrap:wrap;">
+            <button type="button" class="btn-action btn-action-secondary" id="btnWizardBackToDashboard" onclick="cancelWizardAndReturn()" style="display:none; padding:12px 20px; font-size:0.95rem;">
+              ← Annulla e Torna alla Dashboard
+            </button>
+            <div style="flex:1;"></div>
+            <button type="submit" class="btn-action btn-action-primary" style="padding:14px 30px; font-size:1.1rem; font-weight:800; background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); border-radius:10px;">
+              🚀 Salva e Accedi alla Portineria
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       SCREEN 2: SCHERMATA PRINCIPALE (DASHBOARD PORTINERIA)
+       ========================================================================== -->
+  <div id="screenDashboard" style="display: none; min-height: 100vh; flex-direction: column;">
+    
+    <!-- HEADER -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="institute-info" onclick="handleProtectedAction('dati_scuola')" title="Clicca per modificare i dati della scuola (Richiede PIN)">
+          <div class="institute-logo">🏫</div>
+          <div class="institute-titles">
+            <h1 id="headerSchoolTitle">Nome Istituto</h1>
+            <p id="headerSchoolSubtitle">Portineria Digitale</p>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <div class="live-clock-badge">
+            <span class="live-clock-time" id="clockTime">--:--:--</span>
+            <span class="live-clock-date" id="clockDate">Caricamento data...</span>
+          </div>
+
+          <!-- OPERATOR STAFF STATUS TOGGLE BUTTON -->
+          <button class="btn-header-tool" id="btnHeaderOperatorMode" onclick="toggleOperatorMode()" style="background: rgba(255,255,255,0.18);">
+            🔒 <span>Accesso Staff</span>
+          </button>
+
+          <button class="btn-header-tool" id="btnHeaderSchoolData" onclick="handleProtectedAction('dati_scuola')" title="Personalizza Nome Scuola e Indirizzi">
+            🏛️ <span>Dati Scuola</span>
+          </button>
+          <button class="btn-header-tool" id="btnHeaderBackup" onclick="handleProtectedAction('backup')" title="Gestione Backup e Dati">
+            ⚙️ <span>Dati & Backup</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN BODY -->
+    <main class="app-main">
+
+      <!-- STATS COUNTERS -->
+      <section class="stats-bar">
+        <div class="stat-card" style="cursor: pointer;" onclick="handleProtectedAction('quick_exit')">
+          <div class="stat-icon present">🟢</div>
+          <div class="stat-details">
+            <div class="stat-value" id="statPresentCount">0</div>
+            <div class="stat-label">Presenti in Istituto</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon total">🚪</div>
+          <div class="stat-details">
+            <div class="stat-value" id="statTotalToday">0</div>
+            <div class="stat-label">Ingressi Totali Oggi</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon students">👨‍🎓</div>
+          <div class="stat-details">
+            <div class="stat-value" id="statStudentsToday">0</div>
+            <div class="stat-label">Pratiche Alunni</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon exits">🏃</div>
+          <div class="stat-details">
+            <div class="stat-value" id="statExitsToday">0</div>
+            <div class="stat-label">Uscite Registrate</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HERO QUICK ACTION BUTTONS (MOCKUP ACCURATE LAYOUT) -->
+      <section class="hero-actions-container">
+        <!-- BUTTON 1: VISITOR STANDARD (TOP LEFT - BLUE) -->
+        <button class="hero-btn-large hero-btn-visitor" onclick="openVisitorModal()">
+          <span class="hero-btn-icon-top">🚪</span>
+          <h3>REGISTRA INGRESSO VISITATORE STANDARD</h3>
+          <p>Docenti · Personale ATA · Manutentori · Fornitori · Visitatori</p>
+        </button>
+
+        <!-- BUTTON 2: STUDENT MANAGEMENT (TOP RIGHT - EMERALD GREEN) -->
+        <button class="hero-btn-large hero-btn-student" onclick="openStudentModal()">
+          <span class="hero-btn-icon-top">👨‍🎓</span>
+          <h3>GESTIONE ALUNNI</h3>
+          <p>Ingresso in ritardo / Uscita anticipata (Genitori o delegati autorizzati)</p>
+        </button>
+
+        <!-- BUTTON 3: QUICK EXIT (BOTTOM ROW - SLIM FULL WIDTH ORANGE) -->
+        <button class="hero-btn-exit-bar" onclick="handleProtectedAction('quick_exit')">
+          <span class="hero-btn-exit-title">
+            <span>🏃</span> REGISTRA USCITA
+          </span>
+          <span class="hero-exit-badge-pill" id="heroExitBadgeCount">0</span>
+          <span class="hero-exit-badge-text">presenti</span>
+        </button>
+      </section>
+
+      <!-- DAILY REGISTER TABLE CARD -->
+      <section class="register-card">
+        <div class="register-header">
+          <div class="register-title">
+            <h2>📋 Registro Giornaliero Accessi</h2>
+            <span class="badge" id="registerDateBadge">Oggi</span>
+            <span class="badge" id="operatorStatusBadge" style="background:#718096; margin-left:6px;">🔒 Riservato Staff</span>
+          </div>
+
+          <div class="register-toolbar" id="registerToolbarUnlocked" style="display:none;">
+            <div class="search-input-wrapper">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchInput" class="search-input" placeholder="Cerca cognome, nome, qualifica..." oninput="filterRegister()">
+            </div>
+
+            <button class="btn-action btn-action-primary" onclick="printDailyRegister()">
+              🖨️ <span>Stampa Registro</span>
+            </button>
+
+            <button class="btn-action btn-action-secondary" onclick="exportDataJSON()">
+              📥 <span>Esporta</span>
+            </button>
+
+            <button class="btn-action btn-action-danger" onclick="confirmResetDailyRegister()">
+              🗑️ <span>Reset Odierno</span>
+            </button>
+
+            <button class="btn-action btn-action-secondary" onclick="openChangePinModal()" title="Modifica PIN di sicurezza">
+              🔑 <span>Cambia PIN</span>
+            </button>
+
+            <button class="btn-action btn-action-secondary" onclick="lockOperatorMode(true)" title="Blocca visualizzazione registro">
+              🔒 <span>Blocca</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- PRIVACY SHIELD BOX (SHOWN WHEN LOCKED) -->
+        <div id="registerLockedPrivacyBox" style="text-align: center; padding: 48px 24px; background: #fafbfc; border-radius: 0 0 14px 14px; border-top: 1px solid #e2e8f0;">
+          <div style="font-size: 54px; margin-bottom: 12px; line-height: 1;">🛡️</div>
+          <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--primary); margin-bottom: 8px;">Registro Presenze Riservato</h3>
+          <p style="max-width: 580px; margin: 0 auto 20px auto; color: var(--text-muted); font-size: 0.92rem; line-height: 1.5;">
+            Ai sensi del <strong>GDPR (Regolamento UE 2016/679)</strong> sulla privacy, l'elenco dei visitatori, dei recapiti telefonici e degli alunni registrati è protetto ed accessibile esclusivamente al Personale Scolastico autorizzato.
+          </p>
+          <button type="button" class="btn-action btn-action-primary" onclick="promptPinModal('unlock_table')" style="padding: 12px 28px; font-size: 1rem; border-radius: 10px; font-weight: 700;">
+            🔑 Inserisci PIN Personale per Visualizzare
+          </button>
+        </div>
+
+        <!-- TABLE CONTAINER (SHOWN ONLY WHEN UNLOCKED) -->
+        <div class="table-container" id="registerTableContainer" style="display:none;">
+          <table class="table-register" id="registerTable">
+            <thead>
+              <tr>
+                <th>Data e Ora</th>
+                <th>Cognome</th>
+                <th>Nome</th>
+                <th>N. Cellulare</th>
+                <th>Qualifica</th>
+                <th>Motivazione</th>
+                <th>Firma</th>
+                <th>Stato / Uscita</th>
+                <th>Modulo Autorizzazione</th>
+                <th>Azioni</th>
+              </tr>
+            </thead>
+            <tbody id="registerTableBody">
+              <!-- Populated dynamically via JS -->
+            </tbody>
+          </table>
+          
+          <div id="tableEmptyState" class="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <h3>Nessun accesso registrato per la giornata odierna</h3>
+            <p>Usa i pulsanti in alto per registrare un visitatore o una pratica alunno.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 1: REGISTRA INGRESSO VISITATORE STANDARD
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalVisitor">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>🚪 Registrazione Ingresso Visitatore Standard</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalVisitor')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="formVisitor" onsubmit="saveVisitorEntry(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Cognome <span class="required">*</span></label>
+              <input type="text" id="vCognome" class="form-control" required placeholder="Es. Rossi">
+            </div>
+
+            <div class="form-group">
+              <label>Nome <span class="required">*</span></label>
+              <input type="text" id="vNome" class="form-control" required placeholder="Es. Mario">
+            </div>
+
+            <div class="form-group">
+              <label>Numero di Cellulare <span class="required">*</span></label>
+              <input type="tel" id="vCellulare" class="form-control" required placeholder="Es. 333 1234567">
+            </div>
+
+            <div class="form-group">
+              <label>Qualifica <span class="required">*</span></label>
+              <select id="vQualifica" class="form-control" required>
+                <option value="Docente">Docente</option>
+                <option value="Personale ATA">Personale ATA</option>
+                <option value="Manutentore / Tecnico">Manutentore / Tecnico</option>
+                <option value="Fornitore / Corriere">Fornitore / Corriere</option>
+                <option value="Genitore">Genitore</option>
+                <option value="Tirocinante / Esperto Esterno">Tirocinante / Esperto Esterno</option>
+                <option value="Altro">Altro Visitatore</option>
+              </select>
+            </div>
+
+            <div class="form-group form-group-full">
+              <label>Motivazione Accesso <span class="required">*</span></label>
+              <select id="vMotivazione" class="form-control" required>
+                <option value="Segreteria Didattica / Amministrativa">Segreteria Didattica / Amministrativa</option>
+                <option value="Presidenza / Dirigenza">Presidenza / Dirigenza</option>
+                <option value="Ricevimento Docenti / Colloquio">Ricevimento Docenti / Colloquio</option>
+                <option value="Intervento Manutenzione / Assistenza">Intervento Manutenzione / Assistenza</option>
+                <option value="Consegna Merci / Documenti">Consegna Merci / Documenti</option>
+                <option value="Servizio / Mansione Giornaliera">Servizio / Mansione Giornaliera</option>
+                <option value="Altro">Altra motivazione</option>
+              </select>
+            </div>
+
+            <div class="form-group form-group-full">
+              <label>Note aggiuntive / Persona da incontrare (opzionale)</label>
+              <input type="text" id="vNote" class="form-control" placeholder="Es. Ufficio personale, Prof. Bianchi">
+            </div>
+
+            <div class="form-group form-group-full">
+              <label>Firma Digitale Visitatore <span class="required">*</span></label>
+              <div class="signature-container" id="sigContainerVisitor">
+                <canvas id="canvasSigVisitor" class="signature-canvas"></canvas>
+                <div class="signature-toolbar">
+                  <span>Firma nel riquadro con dito o mouse</span>
+                  <button type="button" class="btn-clear-sig" onclick="clearSignature('visitor')">Pulisci firma</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer" style="padding-left:0; padding-right:0; margin-top:20px; border-bottom:0;">
+            <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalVisitor')">Annulla</button>
+            <button type="submit" class="btn-action btn-action-primary" style="padding:10px 20px; font-size:1rem;">✅ Registra Ingresso</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 2: GESTIONE ALUNNO (RITARDO / USCITA) + SMART CAMERA + PIANO B
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalStudent">
+    <div class="modal-dialog modal-dialog-large">
+      <div class="modal-header">
+        <h3>👨‍🎓 Gestione Alunni - Ingresso Posticipato / Uscita Anticipata</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalStudent')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="formStudent" onsubmit="saveStudentEntryAndPrint(event)">
+
+          <label style="font-weight: 700; font-size: 0.95rem; margin-bottom: 8px; display:block;">Tipologia Richiesta <span class="required" style="color:var(--danger);">*</span></label>
+          <div class="action-type-toggle">
+            <label class="action-toggle-card selected-enter" id="cardActionEnter" onclick="setActionType('ENTRARE')">
+              <input type="radio" name="studentAction" value="ENTRARE" checked>
+              <span class="icon">🟢</span>
+              <span class="title">ENTRARE (Ingresso in ritardo)</span>
+            </label>
+            <label class="action-toggle-card" id="cardActionExit" onclick="setActionType('USCIRE')">
+              <input type="radio" name="studentAction" value="USCIRE">
+              <span class="icon">🔴</span>
+              <span class="title">USCIRE (Uscita anticipata)</span>
+            </label>
+          </div>
+
+          <!-- SMART CAMERA SCANNER BOX -->
+          <div class="camera-scanner-box">
+            <div class="camera-viewport-wrapper">
+              <video id="cameraVideo" playsinline autoplay muted></video>
+              <div class="camera-placeholder" id="cameraPlaceholder">
+                <span style="font-size: 38px;">📷</span>
+                <strong>Fotocamera Documento d'Identità</strong>
+                <p style="font-size: 0.8rem; max-width: 380px;">Inquadra la Carta d'Identità o MRZ per la lettura ottica assistita dei dati anagrafici del genitore.</p>
+              </div>
+              <div class="scanner-overlay" id="scannerOverlay">
+                <div class="scanner-laser"></div>
+                <div class="scanner-tip">Posiziona qui il documento o la banda MRZ</div>
+              </div>
+            </div>
+            <div class="camera-controls-bar">
+              <span class="camera-status-text" id="cameraStatusText">Fotocamera non attiva</span>
+              <div class="camera-btns-group">
+                <button type="button" class="btn-action btn-action-primary" id="btnToggleCamera" onclick="toggleCamera()">
+                  📸 Attiva Fotocamera
+                </button>
+                <button type="button" class="btn-action btn-action-secondary" onclick="simulateOcrScan()">
+                  ⚡ Simula Riconoscimento CIE
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PIANO B: INSERIMENTO MANUALE DEL DOCUMENTO -->
+          <div class="piano-b-banner">
+            <div class="piano-b-text">
+              <strong>PIANO B - Documento rovinato o fotocamera non disponibile?</strong>
+              Puoi digitare liberamente i dati anagrafici e del documento con la tastiera.
+            </div>
+            <button type="button" class="btn-action btn-action-secondary" onclick="focusManualDoc()" style="white-space: nowrap;">
+              ✏️ Inserisci a mano
+            </button>
+          </div>
+
+          <!-- DATI GENITORE / DELEGATO -->
+          <h4 style="color:var(--primary); margin: 16px 0 10px 0; font-size:1rem; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">
+            👤 Dati del Genitore o Delegato Autorizzato
+          </h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Cognome Genitore/Delegato <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="text" id="sGenitoreCognome" class="form-control" required placeholder="Es. Rossi">
+            </div>
+
+            <div class="form-group">
+              <label>Nome Genitore/Delegato <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="text" id="sGenitoreNome" class="form-control" required placeholder="Es. Giuseppe">
+            </div>
+
+            <div class="form-group">
+              <label>Nato/a a (Comune di nascita)</label>
+              <input type="text" id="sGenitoreLuogo" class="form-control" placeholder="Es. Castrovillari (CS)">
+            </div>
+
+            <div class="form-group">
+              <label>Nato/a il (Data di nascita)</label>
+              <input type="date" id="sGenitoreDataNascita" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label>Numero di Cellulare <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="tel" id="sGenitoreCellulare" class="form-control" required placeholder="Es. 338 9876543">
+            </div>
+
+            <div class="form-group">
+              <label>In qualità di</label>
+              <select id="sGenitoreRuolo" class="form-control">
+                <option value="padre">Padre</option>
+                <option value="madre">Madre</option>
+                <option value="delegato">Delegato autorizzato</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- ESTREMI DOCUMENTO D'IDENTITÀ -->
+          <h4 style="color:var(--primary); margin: 20px 0 10px 0; font-size:1rem; border-bottom:1px solid #e2e8f0; padding-bottom:4px;" id="headingDocSection">
+            🪪 Estremi Documento d'Identità del Genitore / Delegato
+          </h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Tipo Documento <span class="required" style="color:var(--danger);">*</span></label>
+              <select id="sDocTipo" class="form-control" required>
+                <option value="C.I. Elettronica (CIE)">C.I. Elettronica (CIE)</option>
+                <option value="Carta d'Identità Cartacea">Carta d'Identità Cartacea</option>
+                <option value="Patente di Guida">Patente di Guida</option>
+                <option value="Passaporto">Passaporto</option>
+                <option value="Altro">Altro documento</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Numero Documento <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="text" id="sDocNum" class="form-control" required placeholder="Es. CA00000AA">
+            </div>
+
+            <div class="form-group">
+              <label>Ente di Rilascio <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="text" id="sDocEnte" class="form-control" required placeholder="Es. Comune / Questura / MIT">
+            </div>
+
+            <div class="form-group">
+              <label>Rilasciato il</label>
+              <input type="date" id="sDocRil" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label>Scadenza</label>
+              <input type="date" id="sDocScad" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label>Orario Richiesto <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="time" id="sOrarioRichiesto" class="form-control" required>
+            </div>
+          </div>
+
+          <!-- DATI ALUNNO & SEDE / INDIRIZZO -->
+          <h4 style="color:var(--primary); margin: 20px 0 10px 0; font-size:1rem; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">
+            🎓 Dati Alunno e Sede / Indirizzo di Studio
+          </h4>
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label>Cognome e Nome Alunno/a <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="text" id="sAlunnoNome" class="form-control" required placeholder="Es. Rossi Francesco">
+            </div>
+
+            <div class="form-group">
+              <label>Classe (Anno) <span class="required" style="color:var(--danger);">*</span></label>
+              <select id="sAlunnoClasse" class="form-control" required>
+                <option value="1">1ª</option>
+                <option value="2">2ª</option>
+                <option value="3" selected>3ª</option>
+                <option value="4">4ª</option>
+                <option value="5">5ª</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Sezione <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="text" id="sAlunnoSezione" class="form-control" required maxlength="4" style="text-transform:uppercase;" placeholder="Es. A, B, CSA">
+            </div>
+
+            <div class="form-group form-group-full">
+              <label>Indirizzo di Studio / Sede dell'Istituto <span class="required" style="color:var(--danger);">*</span></label>
+              <div class="school-branches-grid" id="schoolBranchesContainer">
+                <!-- Dynamically generated from schoolConfig.indirizzi -->
+              </div>
+            </div>
+
+            <div class="form-group form-group-full">
+              <label>Motivazione Specifica <span class="required" style="color:var(--danger);">*</span></label>
+              <select id="sMotivazioneSelect" class="form-control" onchange="handleStudentMotivazioneSelect(this.value)">
+                <option value="Motivi di famiglia">Motivi di famiglia</option>
+                <option value="Salute / Visita medica specialistica">Salute / Visita medica specialistica</option>
+                <option value="Problemi di trasporto / Logistica stradale">Problemi di trasporto / Logistica stradale</option>
+                <option value="Attività sportiva agonistica / Certificata">Attività sportiva agonistica / Certificata</option>
+                <option value="Altro">Altra motivazione (specificare sotto)</option>
+              </select>
+              <textarea id="sMotivazioneDettagli" class="form-control" rows="2" style="margin-top:6px;" placeholder="Dettagli motivazione per il modulo ufficiale..."></textarea>
+            </div>
+
+            <div class="form-group form-group-full">
+              <label>Firma Digitale del Genitore / Delegato <span class="required" style="color:var(--danger);">*</span></label>
+              <div class="signature-container" id="sigContainerStudent">
+                <canvas id="canvasSigStudent" class="signature-canvas"></canvas>
+                <div class="signature-toolbar">
+                  <span>Firma nel riquadro con dito o penna touch</span>
+                  <button type="button" class="btn-clear-sig" onclick="clearSignature('student')">Pulisci firma</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer" style="padding-left:0; padding-right:0; margin-top:20px; border-bottom:0;">
+            <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalStudent')">Annulla</button>
+            <button type="submit" class="btn-action btn-action-primary" style="padding:10px 24px; font-size:1.05rem; background: #0f766e;">
+              💾 Registra e 🖨️ Stampa Modulo Ufficiale
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 3: USCITA RAPIDA FILTRATA (SOLO PRESENTI ATTUALI)
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalQuickExit">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>🏃 Registrazione Rapida Uscita (Presenti nell'edificio)</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalQuickExit')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.88rem; color:var(--text-muted); margin-bottom:14px;">
+          Questo elenco mostra <strong>esclusivamente</strong> le persone che sono attualmente all'interno dell'Istituto (orario di ingresso presente, senza orario di uscita). Tocca il pulsante arancione per registrare subito l'uscita.
+        </p>
+        
+        <div class="search-input-wrapper" style="margin-bottom: 14px;">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="quickExitSearch" class="search-input" style="width: 100%;" placeholder="Filtra presenti per nome, cognome o qualifica..." oninput="renderQuickExitList()">
+        </div>
+
+        <div id="quickExitList" class="present-visitors-list">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div id="quickExitEmptyState" class="empty-state" style="display:none; padding:30px 10px;">
+          <div class="empty-state-icon">✅</div>
+          <h4>Nessuna persona attualmente presente nell'edificio</h4>
+          <p>Tutti i visitatori registrati sono già usciti regolarmente.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalQuickExit')">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 4: BACKUP & RIPRISTINO DATI
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalBackup">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>⚙️ Gestione Dati e Backup</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalBackup')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div style="background:#f7fafc; padding:16px; border-radius:10px; border:1px solid #e2e8f0;">
+            <h4 style="color:var(--primary); margin-bottom:6px;">📥 Esportazione Dati</h4>
+            <p style="font-size:0.85rem; color:#4a5568; margin-bottom:12px;">Salva una copia completa di tutti i registri su file locale JSON (consigliato a fine giornata per archivio).</p>
+            <div style="display:flex; gap:10px;">
+              <button class="btn-action btn-action-primary" onclick="exportDataJSON()">Scarica Backup JSON</button>
+              <button class="btn-action btn-action-secondary" onclick="exportDataCSV()">Esporta Tabella Excel (CSV)</button>
+            </div>
+          </div>
+
+          <div style="background:#f7fafc; padding:16px; border-radius:10px; border:1px solid #e2e8f0;">
+            <h4 style="color:var(--primary); margin-bottom:6px;">📤 Ripristino Dati da File</h4>
+            <p style="font-size:0.85rem; color:#4a5568; margin-bottom:12px;">Carica un file JSON precedentemente salvato per ripristinare il registro presenze.</p>
+            <input type="file" id="importFileInput" accept=".json" style="font-size:0.85rem;" onchange="importDataJSON(event)">
+          </div>
+
+          <div style="background:#fff5f5; padding:16px; border-radius:10px; border:1px solid #feb2b2;">
+            <h4 style="color:var(--danger); margin-bottom:6px;">⚠️ Reset / Cancellazione Dati</h4>
+            <p style="font-size:0.85rem; color:#742a2a; margin-bottom:12px;">Cancella il registro della giornata corrente o azzera l'intero database locale e la configurazione scuola.</p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="btn-action btn-action-danger" onclick="confirmResetDailyRegister()">Azzera Registro Odierno</button>
+              <button class="btn-action btn-action-danger" style="background:#e53e3e; color:#fff;" onclick="confirmFullWipe()">Azzera Tutto e Riavvia Wizard</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalBackup')">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 5: INSERIMENTO PIN PERSONALE SCOLASTICO (CON NUMPAD TOUCH)
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalPinPrompt" style="z-index: 2500;">
+    <div class="modal-dialog" style="max-width: 420px; text-align: center;">
+      <div class="modal-header">
+        <h3 style="margin: 0 auto; display: flex; align-items: center; gap: 8px;">
+          🔒 Accesso Riservato Personale
+        </h3>
+        <button class="modal-close-btn" onclick="closeModal('modalPinPrompt')">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 24px 20px;">
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 8px;">
+          Digita il PIN operatore a 4 cifre per accedere:
+        </p>
+
+        <!-- PIN CIRCLES DISPLAY -->
+        <div class="pin-display-wrapper" id="pinDisplayCircles">
+          <div class="pin-circle" id="pinDot0"></div>
+          <div class="pin-circle" id="pinDot1"></div>
+          <div class="pin-circle" id="pinDot2"></div>
+          <div class="pin-circle" id="pinDot3"></div>
+        </div>
+
+        <!-- HIDDEN INPUT FOR PHYSICAL KEYBOARD SUPPORT -->
+        <input type="password" id="pinHiddenInput" maxlength="6" style="position: absolute; opacity: 0; pointer-events: none;" autocomplete="off">
+
+        <!-- ON-SCREEN TOUCH NUMPAD -->
+        <div class="numpad-grid">
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('1')">1</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('2')">2</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('3')">3</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('4')">4</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('5')">5</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('6')">6</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('7')">7</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('8')">8</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('9')">9</button>
+          <button type="button" class="btn-numpad action-del" onclick="pressNumpadBack()" title="Cancella">⌫</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('0')">0</button>
+          <button type="button" class="btn-numpad action-ok" onclick="submitPinCode()" title="Sblocca">🔓</button>
+        </div>
+
+        <div style="font-size: 0.82rem; color: #a0aec0; margin-top: 10px;">
+          PIN iniziale predefinito: <strong style="color: var(--primary);">1234</strong>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: center;">
+        <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalPinPrompt')">
+          Annulla
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 6: MODIFICA PIN DI SICUREZZA PERSONALE
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalChangePin" style="z-index: 2600;">
+    <div class="modal-dialog" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3>🔑 Modifica PIN Personale Scolastico</h3>
+        <button class="modal-close-btn" onclick="closeModal('modalChangePin')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="formChangePin" onsubmit="saveNewPin(event)">
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label>PIN Attuale <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="password" id="pinOldInput" class="form-control" required maxlength="6" placeholder="Es. 1234">
+            </div>
+
+            <div class="form-group form-group-full">
+              <label>Nuovo PIN (4-6 cifre) <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="password" id="pinNewInput" class="form-control" required maxlength="6" placeholder="Es. 5678">
+            </div>
+
+            <div class="form-group form-group-full">
+              <label>Conferma Nuovo PIN <span class="required" style="color:var(--danger);">*</span></label>
+              <input type="password" id="pinConfirmInput" class="form-control" required maxlength="6" placeholder="Ripeti nuovo PIN">
+            </div>
+          </div>
+
+          <div class="modal-footer" style="padding-left:0; padding-right:0; margin-top:20px; border-bottom:0;">
+            <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalChangePin')">Annulla</button>
+            <button type="submit" class="btn-action btn-action-primary">💾 Salva Nuovo PIN</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       CONTAINER STAMPA 1: MODULO SUPPLEMENTARE D'AUTORIZZAZIONE (FORMATO A4 VERTICALE)
+       ========================================================================== -->
+  <div id="print-module-container" class="print-only-container">
+    <div class="container">
+      <div class="header" id="p-print-school-header">
+        Al Dirigente Scolastico<br>
+        <b id="p-print-school-name">Istituto Istruzione Superiore</b><br>
+        <div id="p-print-school-branches-list"></div>
+      </div>
+
+      <div class="row">
+        Il/La sottoscritto/a <span class="field-line" style="width: 320px;" id="p-genitore"></span>
+        nato/a a <span class="field-line" style="width: 140px;" id="p-luogo"></span> il <span class="field-line" style="width: 80px;" id="p-data-nascita"></span>
+      </div>
+
+      <div class="row">
+        In qualità di padre/madre/delegato dell'alunno/a <span class="field-line" style="width: 280px;" id="p-alunno"></span>
+        frequentante, per il corrente anno scolastico, la classe <span class="field-line" style="width: 40px;" id="p-classe"></span> sez. <span class="field-line" style="width: 40px;" id="p-sezione"></span> del:
+      </div>
+
+      <div class="checkbox-group" id="p-school-checkboxes-container">
+        <!-- Dynamically rendered according to configured branches -->
+      </div>
+
+      <div class="title">CHIEDE</div>
+
+      <div class="row">
+        alla S.V. di voler fare: 
+        &nbsp;&nbsp;<b>[ <span id="p-tipo-azione-entra"> </span> ] ENTRARE</b> il/la proprio/a figlio/a alle ore <span class="field-line" style="width: 60px;" id="p-orario-entra"></span>
+        &nbsp;&nbsp;<b>[ <span id="p-tipo-azione-esce"> </span> ] USCIRE</b> il/la proprio/a figlio/a alle ore <span class="field-line" style="width: 60px;" id="p-orario-esce"></span>
+      </div>
+
+      <div class="row">
+        per la seguente motivazione:
+        <div class="box-motivazione" id="p-motivazione"></div>
+      </div>
+
+      <div class="row" style="font-size: 12px; margin-top: 15px; border-top: 1px dashed #666; padding-top: 5px;">
+        <b>Estremi Documento d'Identità (Richiesto per ingressi/uscite):</b><br>
+        Tipo: <span class="field-line" style="width: 120px;" id="p-doc-tipo"></span> 
+        Numero: <span class="field-line" style="width: 120px;" id="p-doc-num"></span> 
+        Ente: <span class="field-line" style="width: 150px;" id="p-doc-ente"></span><br>
+        Rilasciato il: <span class="field-line" style="width: 90px;" id="p-doc-ril"></span> 
+        Scadenza: <span class="field-line" style="width: 90px;" id="p-doc-scad"></span>
+      </div>
+
+      <div class="row" style="margin-top: 15px;">
+        Si allega copia di un documento di riconoscimento in corso di validità.
+      </div>
+
+      <div class="footer-section">
+        <div>
+          Data <span class="field-line" style="width: 100px;" id="p-data-odierna"></span>
+        </div>
+        <div class="signature-box">
+          In fede<br>
+          <img id="p-firma" class="signature-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='30'%3E%3C/svg%3E" alt="Firma Digitale">
+        </div>
+      </div>
+    </div>
+
+    <div class="no-print" style="text-align: center; margin-top: 20px;">
+      <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; background: #0056b3; color: #fff; border: none; border-radius: 5px;">🖨️ Stampa Modulo</button>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       CONTAINER STAMPA 2: REGISTRO GIORNALIERO (FORMATO A4 ORIZZONTALE)
+       ========================================================================== -->
+  <div id="print-register-container" class="print-only-container">
+    <div class="print-register-header">
+      <h2 id="p-reg-school-title">REGISTRO GIORNALIERO ACCESSI PORTINERIA</h2>
+      <h3>REGISTRO GIORNALIERO ACCESSI &bull; DATA: <span id="p-reg-data"></span></h3>
+    </div>
+
+    <table class="print-register-table">
+      <thead>
+        <tr>
+          <th style="width: 11%;">Data e ora</th>
+          <th style="width: 11%;">Cognome</th>
+          <th style="width: 10%;">Nome</th>
+          <th style="width: 11%;">N. cellulare</th>
+          <th style="width: 9%;">Qualifica</th>
+          <th style="width: 15%;">Motivazione</th>
+          <th style="width: 10%; text-align:center;">Firma</th>
+          <th style="width: 7%;">Uscita</th>
+          <th style="width: 8%;">Modulo di autorizzazione</th>
+          <th style="width: 8%; text-align:center;">Firma coll. scolastico</th>
+        </tr>
+      </thead>
+      <tbody id="printRegisterTableBody">
+        <!-- Rendered dynamically -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TOAST ALERTS NOTIFIER -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ==========================================================================
+       JAVASCRIPT APPLICATION CORE LOGIC
+       ========================================================================== -->
+  <script>
+    /* ==========================================================================
+       STATE & CONSTANTS
+       ========================================================================== */
+    const STORAGE_KEY = 'portineria_iis_records_v1';
+    const SCHOOL_CONFIG_KEY = 'portineria_school_config_v1';
+    const PIN_STORAGE_KEY = 'portineria_security_pin_v1';
+
+    let records = [];
+    let mediaStream = null;
+    let currentStudentAction = 'ENTRARE';
+
+    // Operator Kiosk Mode & PIN Security State
+    let isOperatorUnlocked = false;
+    let currentEnteredPin = '';
+    let pendingProtectedAction = null;
+    let autoLockTimer = null;
+
+    let schoolConfig = {
+      nomeScuola: '',
+      citta: '',
+      indirizzi: []
+    };
+
+    let tempCoursesList = [];
+
+    const signaturePads = {
+      visitor: { canvas: null, ctx: null, isDrawing: false, hasContent: false },
+      student: { canvas: null, ctx: null, isDrawing: false, hasContent: false }
+    };
+
+    /* ==========================================================================
+       SCREEN NAVIGATION (SPA VIEW SWITCHING)
+       ========================================================================== */
+    function showScreen(screen) {
+      const wizard = document.getElementById('screenWizard');
+      const dashboard = document.getElementById('screenDashboard');
+      
+      if (screen === 'wizard') {
+        wizard.style.display = 'flex';
+        dashboard.style.display = 'none';
+      } else {
+        wizard.style.display = 'none';
+        dashboard.style.display = 'flex';
+      }
+      window.scrollTo(0, 0);
+    }
+
+    function isSchoolConfigured() {
+      try {
+        const raw = localStorage.getItem(SCHOOL_CONFIG_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw);
+        return Boolean(
+          parsed &&
+          typeof parsed.nomeScuola === 'string' &&
+          parsed.nomeScuola.trim().length > 0 &&
+          Array.isArray(parsed.indirizzi) &&
+          parsed.indirizzi.length > 0
+        );
+      } catch (err) {
+        return false;
+      }
+    }
+
+    function initApp() {
+      try { loadRecords(); } catch(e) { console.error(e); }
+      try { initClocks(); } catch(e) { console.error(e); }
+      try { initSignatures(); } catch(e) { console.error(e); }
+      try { setDefaultTimes(); } catch(e) { console.error(e); }
+      try { initCourseInputListener(); } catch(e) { console.error(e); }
+      try { initPinKeyboardListener(); } catch(e) { console.error(e); }
+
+      if (isSchoolConfigured()) {
+        try {
+          const raw = localStorage.getItem(SCHOOL_CONFIG_KEY);
+          schoolConfig = JSON.parse(raw);
+          applySchoolConfig();
+          showScreen('dashboard');
+        } catch (e) {
+          console.error('Errore lettura scuola:', e);
+          openSchoolConfig(true);
+        }
+      } else {
+        // AL PRIMO AVVIO: LA SCUOLA È VUOTA! Mostra la schermata Wizard direttamente!
+        openSchoolConfig(true);
+      }
+
+      try { updateOperatorModeUI(); } catch(e) { console.error(e); }
+      try { renderDashboard(); } catch(e) { console.error(e); }
+    }
+
+    // Startup Execution (Runs immediately if ready or on DOMContentLoaded)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+      initApp();
+    }
+
+    /* ==========================================================================
+       SCHOOL CONFIGURATION WIZARD LOGIC
+       ========================================================================== */
+    function openSchoolConfig(isFirstRun = false) {
+      const backBtn = document.getElementById('btnWizardBackToDashboard');
+      const title = document.getElementById('wizardTitle');
+      const subtitle = document.getElementById('wizardSubtitle');
+
+      if (isFirstRun || !isSchoolConfigured()) {
+        if (backBtn) backBtn.style.display = 'none';
+        if (title) title.textContent = 'Benvenuto in Portineria Digitale!';
+        if (subtitle) subtitle.textContent = 'Al primo avvio, inserisci il nome del tuo Istituto e gli indirizzi di studio o plessi per iniziare.';
+        document.getElementById('cfgSchoolName').value = '';
+        document.getElementById('cfgSchoolCity').value = '';
+        if (document.getElementById('cfgSchoolPin')) {
+          document.getElementById('cfgSchoolPin').value = getStoredPin() || '1234';
+        }
+        tempCoursesList = [];
+      } else {
+        if (backBtn) backBtn.style.display = 'inline-flex';
+        if (title) title.textContent = 'Personalizzazione Istituto Scolastico';
+        if (subtitle) subtitle.textContent = 'Modifica il nome della scuola e gestisci gli indirizzi di studio o plessi presenti.';
+        document.getElementById('cfgSchoolName').value = schoolConfig.nomeScuola || '';
+        document.getElementById('cfgSchoolCity').value = schoolConfig.citta || '';
+        if (document.getElementById('cfgSchoolPin')) {
+          document.getElementById('cfgSchoolPin').value = getStoredPin() || '1234';
+        }
+        tempCoursesList = [...(schoolConfig.indirizzi || [])];
+      }
+
+      document.getElementById('cfgCourseInput').value = '';
+      renderTempCoursesList();
+      showScreen('wizard');
+    }
+
+    function cancelWizardAndReturn() {
+      if (isSchoolConfigured()) {
+        showScreen('dashboard');
+      } else {
+        showToast('Devi completare la configurazione della scuola prima di accedere!', 'error');
+      }
+    }
+
+    function addCourseFromInput() {
+      const input = document.getElementById('cfgCourseInput');
+      const val = input.value.trim();
+      if (!val) {
+        showToast('Inserisci il nome di un indirizzo di studio!', 'error');
+        input.focus();
+        return;
+      }
+      if (tempCoursesList.includes(val)) {
+        showToast('Questo indirizzo è già presente nell\'elenco!', 'info');
+        input.focus();
+        return;
+      }
+
+      tempCoursesList.push(val);
+      input.value = '';
+      input.focus();
+      renderTempCoursesList();
+    }
+
+    function initCourseInputListener() {
+      const courseInput = document.getElementById('cfgCourseInput');
+      if (courseInput) {
+        courseInput.onkeydown = function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            addCourseFromInput();
+          }
+        };
+      }
+    }
+
+    function removeTempCourse(index) {
+      tempCoursesList.splice(index, 1);
+      renderTempCoursesList();
+    }
+
+    function renderTempCoursesList() {
+      const container = document.getElementById('cfgCoursesListContainer');
+      container.innerHTML = '';
+
+      if (tempCoursesList.length === 0) {
+        container.innerHTML = `<span id="cfgNoCoursesMsg" style="color:#a0aec0; font-size:0.88rem; font-style:italic;">
+          Nessun indirizzo inserito. Digita un indirizzo sopra e tocca "Aggiungi".
+        </span>`;
+        return;
+      }
+
+      tempCoursesList.forEach((course, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'course-chip';
+        chip.innerHTML = `
+          <span>${escapeHtml(course)}</span>
+          <button type="button" class="course-chip-remove" onclick="removeTempCourse(${idx})" title="Rimuovi">&times;</button>
+        `;
+        container.appendChild(chip);
+      });
+    }
+
+    function fillSampleSchoolConfig() {
+      document.getElementById('cfgSchoolName').value = 'I.I.S. "E. Mattei"';
+      document.getElementById('cfgSchoolCity').value = 'Castrovillari (CS)';
+      if (document.getElementById('cfgSchoolPin')) {
+        document.getElementById('cfgSchoolPin').value = '1234';
+      }
+      tempCoursesList = [
+        'Liceo Scientifico',
+        'Liceo Scienze Applicate',
+        'Liceo Linguistico',
+        'Liceo Classico "Garibaldi"',
+        'Liceo Artistico "Alfano"',
+        'Liceo Scientifico Mormanno'
+      ];
+      renderTempCoursesList();
+      showToast('Dati di esempio inseriti! Clicca su "Salva e Accedi" in basso per confermare.', 'info');
+    }
+
+    function saveSchoolConfig(e) {
+      e.preventDefault();
+      const schoolName = document.getElementById('cfgSchoolName').value.trim();
+      const schoolCity = document.getElementById('cfgSchoolCity').value.trim();
+      const pinEl = document.getElementById('cfgSchoolPin');
+
+      if (!schoolName) {
+        showToast('Inserisci il nome della scuola!', 'error');
+        return;
+      }
+
+      if (tempCoursesList.length === 0) {
+        showToast('Aggiungi almeno un indirizzo di studio!', 'error');
+        document.getElementById('cfgCourseInput').focus();
+        return;
+      }
+
+      if (pinEl && pinEl.value.trim()) {
+        const pinVal = pinEl.value.trim();
+        if (/^\d{4,6}$/.test(pinVal)) {
+          setStoredPin(pinVal);
+        } else {
+          showToast('Il PIN deve essere composto da 4 a 6 cifre numeriche!', 'error');
+          pinEl.focus();
+          return;
+        }
+      }
+
+      schoolConfig = {
+        nomeScuola: schoolName,
+        citta: schoolCity,
+        indirizzi: [...tempCoursesList]
+      };
+
+      try {
+        localStorage.setItem(SCHOOL_CONFIG_KEY, JSON.stringify(schoolConfig));
+        applySchoolConfig();
+        showScreen('dashboard');
+        renderDashboard();
+        showToast('Configurazione salvata con successo! Benvenuto.', 'success');
+      } catch (err) {
+        console.error('Errore salvataggio scuola:', err);
+        showToast('Errore nel salvataggio della configurazione!', 'error');
+      }
+    }
+
+    function applySchoolConfig() {
+      if (!schoolConfig || !schoolConfig.nomeScuola) return;
+
+      document.getElementById('pageTitle').textContent = `Portineria Digitale - ${schoolConfig.nomeScuola}`;
+      document.getElementById('headerSchoolTitle').textContent = schoolConfig.nomeScuola;
+      
+      let subtitleText = '';
+      if (schoolConfig.indirizzi && schoolConfig.indirizzi.length > 0) {
+        subtitleText = schoolConfig.indirizzi.join(' • ');
+      }
+      if (schoolConfig.citta) {
+        subtitleText += (subtitleText ? ' | ' : '') + schoolConfig.citta;
+      }
+      document.getElementById('headerSchoolSubtitle').textContent = subtitleText || 'Portineria Digitale';
+
+      const branchesContainer = document.getElementById('schoolBranchesContainer');
+      if (branchesContainer) {
+        branchesContainer.innerHTML = '';
+        (schoolConfig.indirizzi || []).forEach((ind, index) => {
+          const label = document.createElement('label');
+          label.className = 'branch-radio-label';
+          label.innerHTML = `
+            <input type="radio" name="schoolBranch" value="${index}" ${index === 0 ? 'checked' : ''}>
+            <span>${escapeHtml(ind)}</span>
+          `;
+          branchesContainer.appendChild(label);
+        });
+      }
+
+      const printName = document.getElementById('p-print-school-name');
+      if (printName) printName.textContent = schoolConfig.nomeScuola;
+
+      const printBranchesList = document.getElementById('p-print-school-branches-list');
+      if (printBranchesList) {
+        let bHtml = '';
+        (schoolConfig.indirizzi || []).forEach(ind => {
+          bHtml += `• ${escapeHtml(ind)}<br>`;
+        });
+        printBranchesList.innerHTML = bHtml;
+      }
+
+      const printChkContainer = document.getElementById('p-school-checkboxes-container');
+      if (printChkContainer) {
+        printChkContainer.innerHTML = '';
+        (schoolConfig.indirizzi || []).forEach((ind, index) => {
+          const item = document.createElement('div');
+          item.className = 'checkbox-item';
+          item.innerHTML = `<input type="checkbox" id="sede-${index}"> ${escapeHtml(ind)}`;
+          printChkContainer.appendChild(item);
+        });
+      }
+
+      const printRegTitle = document.getElementById('p-reg-school-title');
+      if (printRegTitle) {
+        printRegTitle.textContent = `${schoolConfig.nomeScuola}${schoolConfig.citta ? ' - ' + schoolConfig.citta : ''}`;
+      }
+    }
+
+    /* ==========================================================================
+       OPERATOR SECURITY & PIN MANAGEMENT LOGIC
+       ========================================================================== */
+    function getStoredPin() {
+      try {
+        const pin = localStorage.getItem(PIN_STORAGE_KEY);
+        return (pin && pin.trim().length >= 4) ? pin.trim() : '1234';
+      } catch (e) {
+        return '1234';
+      }
+    }
+
+    function setStoredPin(pin) {
+      try {
+        localStorage.setItem(PIN_STORAGE_KEY, String(pin).trim());
+      } catch (e) {
+        console.error('Errore salvataggio PIN:', e);
+      }
+    }
+
+    function promptPinModal(actionType = null) {
+      pendingProtectedAction = actionType || null;
+      currentEnteredPin = '';
+      updatePinDots();
+
+      const pinHiddenInput = document.getElementById('pinHiddenInput');
+      if (pinHiddenInput) {
+        pinHiddenInput.value = '';
+      }
+
+      openModal('modalPinPrompt');
+
+      // Focus hidden input for physical keyboard input
+      setTimeout(() => {
+        if (pinHiddenInput) pinHiddenInput.focus();
+      }, 150);
+    }
+
+    function pressNumpadDigit(digit) {
+      const maxLen = Math.max(4, getStoredPin().length);
+      if (currentEnteredPin.length < maxLen) {
+        currentEnteredPin += String(digit);
+        updatePinDots();
+      }
+
+      // Automatically verify when max length is reached
+      if (currentEnteredPin.length === maxLen) {
+        setTimeout(() => {
+          submitPinCode();
+        }, 120);
+      }
+    }
+
+    function pressNumpadBack() {
+      if (currentEnteredPin.length > 0) {
+        currentEnteredPin = currentEnteredPin.slice(0, -1);
+        updatePinDots();
+      }
+    }
+
+    function updatePinDots() {
+      const container = document.getElementById('pinDisplayCircles');
+      if (!container) return;
+      const targetPinLength = Math.max(4, getStoredPin().length);
+
+      let dots = container.querySelectorAll('.pin-circle');
+      if (dots.length !== targetPinLength) {
+        container.innerHTML = '';
+        for (let i = 0; i < targetPinLength; i++) {
+          const d = document.createElement('div');
+          d.className = 'pin-circle';
+          d.id = `pinDot${i}`;
+          container.appendChild(d);
+        }
+        dots = container.querySelectorAll('.pin-circle');
+      }
+
+      dots.forEach((dot, idx) => {
+        if (idx < currentEnteredPin.length) {
+          dot.classList.add('filled');
+        } else {
+          dot.classList.remove('filled');
+        }
+      });
+    }
+
+    function submitPinCode() {
+      const correctPin = getStoredPin();
+      if (currentEnteredPin === correctPin) {
+        isOperatorUnlocked = true;
+        closeModal('modalPinPrompt');
+        updateOperatorModeUI();
+        resetAutoLockTimer();
+        showToast('PIN corretto! Modalità Personale Scolastico sbloccata.', 'success');
+
+        const action = pendingProtectedAction;
+        pendingProtectedAction = null;
+        currentEnteredPin = '';
+        if (action) {
+          executeProtectedAction(action);
+        }
+      } else {
+        const container = document.getElementById('pinDisplayCircles');
+        if (container) {
+          container.classList.add('shake');
+          setTimeout(() => container.classList.remove('shake'), 450);
+        }
+        currentEnteredPin = '';
+        updatePinDots();
+        showToast('PIN errato! Riprova.', 'error');
+      }
+    }
+
+    function initPinKeyboardListener() {
+      window.addEventListener('keydown', (e) => {
+        const modalPrompt = document.getElementById('modalPinPrompt');
+        if (!modalPrompt || !modalPrompt.classList.contains('active')) return;
+
+        if (e.key >= '0' && e.key <= '9') {
+          e.preventDefault();
+          pressNumpadDigit(e.key);
+        } else if (e.key === 'Backspace') {
+          e.preventDefault();
+          pressNumpadBack();
+        } else if (e.key === 'Enter') {
+          e.preventDefault();
+          submitPinCode();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          closeModal('modalPinPrompt');
+        }
+      });
+    }
+
+    function handleProtectedAction(type) {
+      if (isOperatorUnlocked) {
+        resetAutoLockTimer();
+        executeProtectedAction(type);
+      } else {
+        promptPinModal(type);
+      }
+    }
+
+    function executeProtectedAction(type) {
+      switch (type) {
+        case 'quick_exit':
+          openQuickExitModal();
+          break;
+        case 'dati_scuola':
+          openSchoolConfig(false);
+          break;
+        case 'backup':
+          openBackupModal();
+          break;
+        case 'unlock_table':
+          // Table is already made visible by updateOperatorModeUI()
+          break;
+        case 'change_pin':
+          openChangePinModal();
+          break;
+        default:
+          console.log('Azione protetta eseguita:', type);
+      }
+    }
+
+    function toggleOperatorMode() {
+      if (isOperatorUnlocked) {
+        lockOperatorMode(true);
+      } else {
+        promptPinModal('unlock_table');
+      }
+    }
+
+    function lockOperatorMode(notify = true) {
+      isOperatorUnlocked = false;
+      if (autoLockTimer) {
+        clearTimeout(autoLockTimer);
+        autoLockTimer = null;
+      }
+      updateOperatorModeUI();
+      if (notify) {
+        showToast('Modalità Personale bloccata. Registro protetto da GDPR.', 'info');
+      }
+    }
+
+    function resetAutoLockTimer() {
+      if (autoLockTimer) {
+        clearTimeout(autoLockTimer);
+      }
+      // Auto-lock automatically after 5 minutes of inactivity
+      autoLockTimer = setTimeout(() => {
+        if (isOperatorUnlocked) {
+          lockOperatorMode(true);
+        }
+      }, 5 * 60 * 1000);
+    }
+
+    function updateOperatorModeUI() {
+      const badge = document.getElementById('operatorStatusBadge');
+      const headerBtn = document.getElementById('btnHeaderOperatorMode');
+      const toolbar = document.getElementById('registerToolbarUnlocked');
+      const privacyBox = document.getElementById('registerLockedPrivacyBox');
+      const tableContainer = document.getElementById('registerTableContainer');
+
+      if (isOperatorUnlocked) {
+        if (badge) {
+          badge.textContent = '🔓 Staff Attivo (Sbloccato)';
+          badge.style.background = 'var(--success)';
+        }
+        if (headerBtn) {
+          headerBtn.innerHTML = '🔓 <span>Staff Attivo</span>';
+          headerBtn.style.background = 'rgba(56, 161, 105, 0.35)';
+          headerBtn.title = 'Tocca per bloccare la schermata (nascondi registro ai visitatori)';
+        }
+        if (toolbar) toolbar.style.display = 'flex';
+        if (privacyBox) privacyBox.style.display = 'none';
+        if (tableContainer) tableContainer.style.display = 'block';
+      } else {
+        if (badge) {
+          badge.textContent = '🔒 Riservato Staff';
+          badge.style.background = '#718096';
+        }
+        if (headerBtn) {
+          headerBtn.innerHTML = '🔒 <span>Accesso Staff</span>';
+          headerBtn.style.background = 'rgba(255, 255, 255, 0.18)';
+          headerBtn.title = 'Tocca per inserire il PIN e sbloccare le funzioni riservate';
+        }
+        if (toolbar) toolbar.style.display = 'none';
+        if (privacyBox) privacyBox.style.display = 'block';
+        if (tableContainer) tableContainer.style.display = 'none';
+      }
+    }
+
+    function openChangePinModal() {
+      const form = document.getElementById('formChangePin');
+      if (form) form.reset();
+      openModal('modalChangePin');
+      setTimeout(() => {
+        const inp = document.getElementById('pinOldInput');
+        if (inp) inp.focus();
+      }, 150);
+    }
+
+    function saveNewPin(e) {
+      e.preventDefault();
+      const oldPin = document.getElementById('pinOldInput').value.trim();
+      const newPin = document.getElementById('pinNewInput').value.trim();
+      const confirmPin = document.getElementById('pinConfirmInput').value.trim();
+
+      if (oldPin !== getStoredPin()) {
+        showToast('Il PIN attuale non è corretto!', 'error');
+        document.getElementById('pinOldInput').focus();
+        return;
+      }
+
+      if (newPin.length < 4 || newPin.length > 6 || !/^\d+$/.test(newPin)) {
+        showToast('Il nuovo PIN deve essere composto da 4 a 6 cifre numeriche!', 'error');
+        document.getElementById('pinNewInput').focus();
+        return;
+      }
+
+      if (newPin !== confirmPin) {
+        showToast('I due campi del nuovo PIN non coincidono!', 'error');
+        document.getElementById('pinConfirmInput').focus();
+        return;
+      }
+
+      setStoredPin(newPin);
+      closeModal('modalChangePin');
+      showToast('PIN di sicurezza aggiornato con successo!', 'success');
+    }
+
+    /* ==========================================================================
+       DATA PERSISTENCE & STORAGE
+       ========================================================================== */
+    function loadRecords() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        records = raw ? JSON.parse(raw) : [];
+      } catch (err) {
+        console.error('Errore nel caricamento dei dati:', err);
+        records = [];
+      }
+    }
+
+    function saveRecords() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+        renderDashboard();
+      } catch (err) {
+        console.error('Errore durante il salvataggio:', err);
+        showToast('Errore di salvataggio memoria locale!', 'error');
+      }
+    }
+
+    function getTodayIsoDate() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function formatDateTime(isoString) {
+      if (!isoString) return '';
+      const d = new Date(isoString);
+      return d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ' ' +
+             d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function formatTimeOnly(isoString) {
+      if (!isoString) return '';
+      const d = new Date(isoString);
+      return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    /* ==========================================================================
+       REAL-TIME CLOCK & HEADER
+       ========================================================================== */
+    function initClocks() {
+      function updateClock() {
+        const now = new Date();
+        const timeEl = document.getElementById('clockTime');
+        const dateEl = document.getElementById('clockDate');
+        
+        if (timeEl) timeEl.textContent = now.toLocaleTimeString('it-IT');
+        if (dateEl) {
+          dateEl.textContent = now.toLocaleDateString('it-IT', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          });
+        }
+      }
+      updateClock();
+      setInterval(updateClock, 1000);
+    }
+
+    function setDefaultTimes() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const timeInput = document.getElementById('sOrarioRichiesto');
+      if (timeInput) timeInput.value = `${hh}:${mm}`;
+    }
+
+    /* ==========================================================================
+       DASHBOARD STATS & REGISTRO VIEW
+       ========================================================================== */
+    function renderDashboard() {
+      const today = getTodayIsoDate();
+      const todayRecords = records.filter(r => r.dataOraIngresso && r.dataOraIngresso.startsWith(today));
+
+      const presentCount = records.filter(r => !r.oraUscita).length;
+      const totalToday = todayRecords.length;
+      const studentsToday = todayRecords.filter(r => r.isStudentFlow).length;
+      const exitsToday = todayRecords.filter(r => r.oraUscita).length;
+
+      document.getElementById('statPresentCount').textContent = presentCount;
+      document.getElementById('heroExitBadgeCount').textContent = presentCount;
+      document.getElementById('statTotalToday').textContent = totalToday;
+      document.getElementById('statStudentsToday').textContent = studentsToday;
+      document.getElementById('statExitsToday').textContent = exitsToday;
+
+      updateOperatorModeUI();
+      renderRegisterTable();
+    }
+
+    function renderRegisterTable(filteredList = null) {
+      const tbody = document.getElementById('registerTableBody');
+      const emptyState = document.getElementById('tableEmptyState');
+      const today = getTodayIsoDate();
+
+      let list = filteredList;
+      if (!list) {
+        list = records.filter(r => r.dataOraIngresso && r.dataOraIngresso.startsWith(today));
+      }
+
+      list.sort((a, b) => new Date(b.dataOraIngresso) - new Date(a.dataOraIngresso));
+
+      tbody.innerHTML = '';
+      if (list.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+      emptyState.style.display = 'none';
+
+      list.forEach(item => {
+        const tr = document.createElement('tr');
+        const isInside = !item.oraUscita;
+        if (isInside) tr.classList.add('status-inside');
+
+        const dataOra = formatDateTime(item.dataOraIngresso);
+        const cellulare = item.cellulare || '-';
+        const qualifica = item.qualifica || 'Visitatore';
+        const motivazione = item.motivazione || '-';
+        const statusHtml = isInside 
+          ? `<span class="status-pill inside">Presente</span>`
+          : `<span class="status-pill exited">Uscito alle ${item.oraUscita}</span>`;
+        
+        const moduleStatus = item.isStudentFlow 
+          ? `<span style="color:#0f766e; font-weight:700;">SI (${item.studentData ? item.studentData.azione : 'Alunno'})</span>`
+          : `<span style="color:#a0aec0;">NO</span>`;
+
+        const signatureHtml = item.firmaBase64 
+          ? `<img src="${item.firmaBase64}" class="signature-thumbnail" title="Visualizza firma" onclick="previewImage('${item.firmaBase64}')">`
+          : `<span style="color:#a0aec0; font-size:0.8rem;">Non apposta</span>`;
+
+        let actionButtons = '';
+        if (isInside) {
+          actionButtons += `<button class="btn-quick-exit" onclick="registerExitDirect('${item.id}')">🏃 Uscita</button> `;
+        }
+        if (item.isStudentFlow) {
+          actionButtons += `<button class="btn-action btn-action-secondary" style="padding:4px 8px; font-size:0.78rem;" onclick="reprintStudentModule('${item.id}')" title="Ristampa Modulo">🖨️ Modulo</button>`;
+        }
+
+        tr.innerHTML = `
+          <td><strong>${dataOra}</strong></td>
+          <td><strong>${escapeHtml(item.cognome)}</strong></td>
+          <td>${escapeHtml(item.nome)}</td>
+          <td><a href="tel:${escapeHtml(cellulare)}" style="color:inherit; text-decoration:none;">${escapeHtml(cellulare)}</a></td>
+          <td><span style="font-weight:600;">${escapeHtml(qualifica)}</span></td>
+          <td>${escapeHtml(motivazione)}</td>
+          <td style="text-align:center;">${signatureHtml}</td>
+          <td>${statusHtml}</td>
+          <td>${moduleStatus}</td>
+          <td style="white-space:nowrap;">${actionButtons}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterRegister() {
+      const q = document.getElementById('searchInput').value.trim().toLowerCase();
+      const today = getTodayIsoDate();
+      const todayRecords = records.filter(r => r.dataOraIngresso && r.dataOraIngresso.startsWith(today));
+
+      if (!q) {
+        renderRegisterTable(null);
+        return;
+      }
+
+      const filtered = todayRecords.filter(r => {
+        const full = `${r.cognome} ${r.nome} ${r.cellulare} ${r.qualifica} ${r.motivazione} ${(r.studentData ? r.studentData.alunno : '')}`.toLowerCase();
+        return full.includes(q);
+      });
+
+      renderRegisterTable(filtered);
+    }
+
+    /* ==========================================================================
+       MODAL CONTROLLERS
+       ========================================================================== */
+    function openModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    function closeModal(modalId) {
+      const modal = document.getElementById(modalId);
+      if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+      if (modalId === 'modalStudent') {
+        stopCamera();
+      }
+    }
+
+    function openVisitorModal() {
+      document.getElementById('formVisitor').reset();
+      clearSignature('visitor');
+      openModal('modalVisitor');
+      setTimeout(() => resizeCanvas('visitor'), 150);
+    }
+
+    function openStudentModal() {
+      document.getElementById('formStudent').reset();
+      clearSignature('student');
+      setActionType('ENTRARE');
+      setDefaultTimes();
+      handleStudentMotivazioneSelect(document.getElementById('sMotivazioneSelect').value);
+      openModal('modalStudent');
+      setTimeout(() => resizeCanvas('student'), 150);
+    }
+
+    function openQuickExitModal() {
+      renderQuickExitList();
+      openModal('modalQuickExit');
+    }
+
+    function openBackupModal() {
+      openModal('modalBackup');
+    }
+
+    /* ==========================================================================
+       TOUCH-FRIENDLY DIGITAL SIGNATURE CANVAS LOGIC
+       ========================================================================== */
+    function initSignatures() {
+      ['visitor', 'student'].forEach(type => {
+        const canvasId = type === 'visitor' ? 'canvasSigVisitor' : 'canvasSigStudent';
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        signaturePads[type].canvas = canvas;
+        signaturePads[type].ctx = ctx;
+
+        const startDraw = (e) => {
+          e.preventDefault();
+          signaturePads[type].isDrawing = true;
+          const pos = getPointerPos(canvas, e);
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y);
+        };
+
+        const drawMove = (e) => {
+          if (!signaturePads[type].isDrawing) return;
+          e.preventDefault();
+          const pos = getPointerPos(canvas, e);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 2.5;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.stroke();
+          signaturePads[type].hasContent = true;
+        };
+
+        const stopDraw = () => {
+          if (signaturePads[type].isDrawing) {
+            signaturePads[type].isDrawing = false;
+            ctx.closePath();
+          }
+        };
+
+        canvas.addEventListener('pointerdown', startDraw);
+        canvas.addEventListener('pointermove', drawMove);
+        window.addEventListener('pointerup', stopDraw);
+        window.addEventListener('pointercancel', stopDraw);
+
+        canvas.addEventListener('touchstart', startDraw, { passive: false });
+        canvas.addEventListener('touchmove', drawMove, { passive: false });
+        canvas.addEventListener('touchend', stopDraw, { passive: false });
+      });
+
+      window.addEventListener('resize', () => {
+        resizeCanvas('visitor');
+        resizeCanvas('student');
+      });
+    }
+
+    function resizeCanvas(type) {
+      const pad = signaturePads[type];
+      if (!pad || !pad.canvas) return;
+
+      const rect = pad.canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+
+      const ratio = window.devicePixelRatio || 1;
+      pad.canvas.width = rect.width * ratio;
+      pad.canvas.height = rect.height * ratio;
+      pad.ctx.scale(ratio, ratio);
+      pad.ctx.fillStyle = "#ffffff";
+      pad.ctx.fillRect(0, 0, rect.width, rect.height);
+      pad.hasContent = false;
+    }
+
+    function getPointerPos(canvas, evt) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = evt.clientX || (evt.touches && evt.touches[0] ? evt.touches[0].clientX : 0);
+      const clientY = evt.clientY || (evt.touches && evt.touches[0] ? evt.touches[0].clientY : 0);
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function clearSignature(type) {
+      const pad = signaturePads[type];
+      if (pad && pad.canvas) {
+        pad.ctx.clearRect(0, 0, pad.canvas.width, pad.canvas.height);
+        pad.ctx.fillStyle = "#ffffff";
+        pad.ctx.fillRect(0, 0, pad.canvas.width, pad.canvas.height);
+        pad.hasContent = false;
+      }
+    }
+
+    function getSignatureDataUrl(type) {
+      const pad = signaturePads[type];
+      if (!pad || !pad.hasContent) return '';
+      return pad.canvas.toDataURL('image/png');
+    }
+
+    /* ==========================================================================
+       STANDARD VISITOR ENTRY SAVE
+       ========================================================================== */
+    function saveVisitorEntry(e) {
+      e.preventDefault();
+
+      const cognome = document.getElementById('vCognome').value.trim();
+      const nome = document.getElementById('vNome').value.trim();
+      const cellulare = document.getElementById('vCellulare').value.trim();
+      const qualifica = document.getElementById('vQualifica').value;
+      const motivazione = document.getElementById('vMotivazione').value;
+      const note = document.getElementById('vNote').value.trim();
+
+      const sigData = getSignatureDataUrl('visitor');
+      if (!sigData) {
+        showToast('È richiesta la firma digitale del visitatore!', 'error');
+        return;
+      }
+
+      const newRecord = {
+        id: 'rec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        isStudentFlow: false,
+        dataOraIngresso: new Date().toISOString(),
+        oraUscita: null,
+        cognome: cognome,
+        nome: nome,
+        cellulare: cellulare,
+        qualifica: qualifica,
+        motivazione: note ? `${motivazione} (${note})` : motivazione,
+        firmaBase64: sigData
+      };
+
+      records.unshift(newRecord);
+      saveRecords();
+
+      closeModal('modalVisitor');
+      lockOperatorMode(false);
+      showToast(`Ingresso registrato per ${cognome} ${nome}!`, 'success');
+    }
+
+    /* ==========================================================================
+       STUDENT ENTRY / EXIT FLOW WITH OFFICIAL MODULE PRINT
+       ========================================================================== */
+    function setActionType(action) {
+      currentStudentAction = action;
+      const cardEnter = document.getElementById('cardActionEnter');
+      const cardExit = document.getElementById('cardActionExit');
+
+      if (action === 'ENTRARE') {
+        cardEnter.classList.add('selected-enter');
+        cardExit.classList.remove('selected-exit');
+        document.querySelector('input[name="studentAction"][value="ENTRARE"]').checked = true;
+      } else {
+        cardEnter.classList.remove('selected-enter');
+        cardExit.classList.add('selected-exit');
+        document.querySelector('input[name="studentAction"][value="USCIRE"]').checked = true;
+      }
+    }
+
+    function handleStudentMotivazioneSelect(val) {
+      const details = document.getElementById('sMotivazioneDettagli');
+      if (val === 'Altro') {
+        details.value = '';
+        details.placeholder = 'Specificare la motivazione...';
+        details.focus();
+      } else {
+        details.value = val;
+      }
+    }
+
+    function focusManualDoc() {
+      const heading = document.getElementById('headingDocSection');
+      if (heading) {
+        heading.scrollIntoView({ behavior: 'smooth' });
+      }
+      document.getElementById('sDocNum').focus();
+      showToast('Compila a mano i campi del documento.', 'info');
+    }
+
+    function saveStudentEntryAndPrint(e) {
+      e.preventDefault();
+
+      const gCognome = document.getElementById('sGenitoreCognome').value.trim();
+      const gNome = document.getElementById('sGenitoreNome').value.trim();
+      const gLuogo = document.getElementById('sGenitoreLuogo').value.trim();
+      const gDataNascita = document.getElementById('sGenitoreDataNascita').value;
+      const gCellulare = document.getElementById('sGenitoreCellulare').value.trim();
+      const gRuolo = document.getElementById('sGenitoreRuolo').value;
+
+      const docTipo = document.getElementById('sDocTipo').value;
+      const docNum = document.getElementById('sDocNum').value.trim();
+      const docEnte = document.getElementById('sDocEnte').value.trim();
+      const docRil = document.getElementById('sDocRil').value;
+      const docScad = document.getElementById('sDocScad').value;
+      const orarioRichiesto = document.getElementById('sOrarioRichiesto').value;
+
+      const alunno = document.getElementById('sAlunnoNome').value.trim();
+      const classe = document.getElementById('sAlunnoClasse').value;
+      const sezione = document.getElementById('sAlunnoSezione').value.trim().toUpperCase();
+      const branchRadio = document.querySelector('input[name="schoolBranch"]:checked');
+      const branchIndex = branchRadio ? branchRadio.value : '0';
+      const branchName = (schoolConfig.indirizzi && schoolConfig.indirizzi[branchIndex]) ? schoolConfig.indirizzi[branchIndex] : '';
+
+      const motivazione = document.getElementById('sMotivazioneDettagli').value.trim() || document.getElementById('sMotivazioneSelect').value;
+
+      const sigData = getSignatureDataUrl('student');
+      if (!sigData) {
+        showToast('È richiesta la firma digitale del genitore/delegato!', 'error');
+        return;
+      }
+
+      const studentData = {
+        genitore: `${gCognome} ${gNome}`,
+        genitoreCognome: gCognome,
+        genitoreNome: gNome,
+        luogoNascita: gLuogo,
+        dataNascita: gDataNascita,
+        ruolo: gRuolo,
+        alunno: alunno,
+        classe: classe,
+        sezione: sezione,
+        sedeIndex: branchIndex,
+        sedeNome: branchName,
+        azione: currentStudentAction,
+        orarioRichiesto: orarioRichiesto,
+        motivazione: motivazione,
+        docTipo: docTipo,
+        docNum: docNum,
+        docEnte: docEnte,
+        docRil: docRil,
+        docScad: docScad
+      };
+
+      // Genitore PRESENTE nell'edificio (oraUscita: null)
+      const newRecord = {
+        id: 'rec_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        isStudentFlow: true,
+        dataOraIngresso: new Date().toISOString(),
+        oraUscita: null,
+        cognome: gCognome,
+        nome: gNome,
+        cellulare: gCellulare,
+        qualifica: `Genitore (${alunno})`,
+        motivazione: `${currentStudentAction === 'ENTRARE' ? 'Ingresso ritardo' : 'Uscita anticipata'}: ${alunno} (${classe}ª${sezione})`,
+        firmaBase64: sigData,
+        studentData: studentData
+      };
+
+      records.unshift(newRecord);
+      saveRecords();
+
+      closeModal('modalStudent');
+      lockOperatorMode(false);
+      showToast(`Pratica registrata! Genitore ${gCognome} presente. Apertura stampa modulo...`, 'success');
+
+      populateOfficialPrintModule(newRecord);
+    }
+
+    function setPrintOrientation(orientation, margin) {
+      let styleEl = document.getElementById('dynamic-print-page-style');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'dynamic-print-page-style';
+        document.head.appendChild(styleEl);
+      }
+      styleEl.textContent = `@page { size: A4 ${orientation}; margin: ${margin}; }`;
+    }
+
+    function populateOfficialPrintModule(record) {
+      const data = record.studentData;
+      if (!data) return;
+
+      setPrintOrientation('portrait', '15mm');
+
+      document.getElementById('p-genitore').textContent = data.genitore || `${record.cognome} ${record.nome}`;
+      document.getElementById('p-luogo').textContent = data.luogoNascita || '';
+      document.getElementById('p-data-nascita').textContent = data.dataNascita ? formatDateIt(data.dataNascita) : '';
+      
+      document.getElementById('p-alunno').textContent = data.alunno || '';
+      document.getElementById('p-classe').textContent = data.classe || '';
+      document.getElementById('p-sezione').textContent = data.sezione || '';
+
+      (schoolConfig.indirizzi || []).forEach((ind, index) => {
+        const chk = document.getElementById(`sede-${index}`);
+        if (chk) chk.checked = (String(data.sedeIndex) === String(index));
+      });
+
+      const isEntrare = data.azione === 'ENTRARE';
+      document.getElementById('p-tipo-azione-entra').textContent = isEntrare ? 'X' : ' ';
+      document.getElementById('p-orario-entra').textContent = isEntrare ? (data.orarioRichiesto || '') : '';
+
+      document.getElementById('p-tipo-azione-esce').textContent = !isEntrare ? 'X' : ' ';
+      document.getElementById('p-orario-esce').textContent = !isEntrare ? (data.orarioRichiesto || '') : '';
+
+      document.getElementById('p-motivazione').textContent = data.motivazione || '';
+
+      document.getElementById('p-doc-tipo').textContent = data.docTipo || '';
+      document.getElementById('p-doc-num').textContent = data.docNum || '';
+      document.getElementById('p-doc-ente').textContent = data.docEnte || '';
+      document.getElementById('p-doc-ril').textContent = data.docRil ? formatDateIt(data.docRil) : '';
+      document.getElementById('p-doc-scad').textContent = data.docScad ? formatDateIt(data.docScad) : '';
+
+      document.getElementById('p-data-odierna').textContent = new Date().toLocaleDateString('it-IT');
+      const imgFirma = document.getElementById('p-firma');
+      if (record.firmaBase64) {
+        imgFirma.src = record.firmaBase64;
+      }
+
+      document.body.classList.remove('print-mode-register');
+      document.body.classList.add('print-mode-module');
+
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+          document.body.classList.remove('print-mode-module');
+        }, 1000);
+      }, 250);
+    }
+
+    function reprintStudentModule(recordId) {
+      const rec = records.find(r => r.id === recordId);
+      if (rec && rec.studentData) {
+        populateOfficialPrintModule(rec);
+      } else {
+        showToast('Dati modulo non trovati per questo record.', 'error');
+      }
+    }
+
+    function formatDateIt(ymd) {
+      if (!ymd) return '';
+      const parts = ymd.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return ymd;
+    }
+
+    /* ==========================================================================
+       SMART CAMERA SCANNER LOGIC & SIMULATION
+       ========================================================================== */
+    async function toggleCamera() {
+      const video = document.getElementById('cameraVideo');
+      const placeholder = document.getElementById('cameraPlaceholder');
+      const overlay = document.getElementById('scannerOverlay');
+      const statusText = document.getElementById('cameraStatusText');
+      const btn = document.getElementById('btnToggleCamera');
+
+      if (mediaStream) {
+        stopCamera();
+        return;
+      }
+
+      try {
+        statusText.textContent = "Avvio fotocamera in corso...";
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+
+        video.srcObject = mediaStream;
+        video.style.display = 'block';
+        placeholder.style.display = 'none';
+        overlay.style.display = 'block';
+        statusText.textContent = "🟢 Fotocamera attiva. Inquadra il documento...";
+        btn.textContent = "⏹️ Spegni Camera";
+        btn.classList.remove('btn-action-primary');
+        btn.classList.add('btn-action-danger');
+      } catch (err) {
+        console.warn('Accesso fotocamera non riuscito o negato:', err);
+        statusText.textContent = "⚠️ Fotocamera non disponibile. Usa il Piano B manuale.";
+        showToast('Impossibile accedere alla fotocamera. Puoi usare il Piano B per inserire i dati a mano.', 'info');
+      }
+    }
+
+    function stopCamera() {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      const video = document.getElementById('cameraVideo');
+      const placeholder = document.getElementById('cameraPlaceholder');
+      const overlay = document.getElementById('scannerOverlay');
+      const statusText = document.getElementById('cameraStatusText');
+      const btn = document.getElementById('btnToggleCamera');
+
+      if (video) video.style.display = 'none';
+      if (placeholder) placeholder.style.display = 'flex';
+      if (overlay) overlay.style.display = 'none';
+      if (statusText) statusText.textContent = "Fotocamera non attiva";
+      if (btn) {
+        btn.textContent = "📸 Attiva Fotocamera";
+        btn.classList.add('btn-action-primary');
+        btn.classList.remove('btn-action-danger');
+      }
+    }
+
+    function simulateOcrScan() {
+      showToast('⚡ Scansione ottica MRZ / CIE in corso...', 'info');
+
+      setTimeout(() => {
+        document.getElementById('sGenitoreCognome').value = 'GRIECO';
+        document.getElementById('sGenitoreNome').value = 'ANTONIO';
+        document.getElementById('sGenitoreLuogo').value = schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Castrovillari';
+        document.getElementById('sGenitoreDataNascita').value = '1982-05-18';
+        document.getElementById('sGenitoreCellulare').value = '340 7654321';
+        
+        document.getElementById('sDocTipo').value = "C.I. Elettronica (CIE)";
+        document.getElementById('sDocNum').value = 'CA' + Math.floor(10000 + Math.random() * 90000) + 'IT';
+        document.getElementById('sDocEnte').value = 'Comune di ' + (schoolConfig.citta ? schoolConfig.citta.split('(')[0].trim() : 'Castrovillari');
+        document.getElementById('sDocRil').value = '2022-06-10';
+        document.getElementById('sDocScad').value = '2032-06-10';
+
+        stopCamera();
+        showToast('✅ Dati documento rilevati con successo!', 'success');
+      }, 800);
+    }
+
+    /* ==========================================================================
+       QUICK EXIT FEATURE (FILTERED CURRENT PRESENT VISITORS)
+       ========================================================================== */
+    function renderQuickExitList() {
+      const container = document.getElementById('quickExitList');
+      const emptyState = document.getElementById('quickExitEmptyState');
+      const search = document.getElementById('quickExitSearch').value.trim().toLowerCase();
+
+      let insideList = records.filter(r => !r.oraUscita);
+
+      if (search) {
+        insideList = insideList.filter(r => {
+          return `${r.cognome} ${r.nome} ${r.qualifica} ${r.motivazione}`.toLowerCase().includes(search);
+        });
+      }
+
+      container.innerHTML = '';
+      if (insideList.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+      emptyState.style.display = 'none';
+
+      insideList.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'present-visitor-item';
+
+        const entryTime = formatDateTime(item.dataOraIngresso);
+        const minutesInside = Math.round((new Date() - new Date(item.dataOraIngresso)) / 60000);
+        const timeAgoText = minutesInside < 60 ? `${minutesInside} min fa` : `${Math.floor(minutesInside/60)}h ${minutesInside%60}m fa`;
+
+        div.innerHTML = `
+          <div class="pv-info">
+            <h4>${escapeHtml(item.cognome)} ${escapeHtml(item.nome)}</h4>
+            <div class="pv-meta">
+              <span>🏷️ <strong>${escapeHtml(item.qualifica)}</strong></span>
+              <span>🕒 Ingresso: ${entryTime} (${timeAgoText})</span>
+              <span>💬 ${escapeHtml(item.motivazione)}</span>
+            </div>
+          </div>
+          <button class="btn-quick-exit" style="padding:10px 16px; font-size:0.95rem;" onclick="registerExitAndRefresh('${item.id}', '${escapeHtml(item.cognome)} ${escapeHtml(item.nome)}')">
+            👉 Registra Uscita
+          </button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function registerExitDirect(recordId) {
+      const rec = records.find(r => r.id === recordId);
+      if (!rec) return;
+
+      const now = new Date();
+      rec.oraUscita = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+      saveRecords();
+
+      showToast(`Uscita registrata per ${rec.cognome} ${rec.nome} alle ${rec.oraUscita}`, 'success');
+    }
+
+    function registerExitAndRefresh(recordId, fullName) {
+      registerExitDirect(recordId);
+      renderQuickExitList();
+    }
+
+    /* ==========================================================================
+       PRINT DAILY REGISTER (A4 LANDSCAPE)
+       ========================================================================== */
+    function printDailyRegister() {
+      const today = getTodayIsoDate();
+      const todayRecords = records.filter(r => r.dataOraIngresso && r.dataOraIngresso.startsWith(today));
+
+      if (todayRecords.length === 0) {
+        showToast('Nessun accesso presente nel registro di oggi da stampare.', 'info');
+        return;
+      }
+
+      setPrintOrientation('landscape', '10mm');
+
+      document.getElementById('p-reg-data').textContent = new Date().toLocaleDateString('it-IT', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      });
+
+      const tbody = document.getElementById('printRegisterTableBody');
+      tbody.innerHTML = '';
+
+      todayRecords.sort((a, b) => new Date(a.dataOraIngresso) - new Date(b.dataOraIngresso));
+
+      todayRecords.forEach(item => {
+        const tr = document.createElement('tr');
+        const dataOra = formatDateTime(item.dataOraIngresso);
+        const uscita = item.oraUscita || 'In corso';
+        const modulo = item.isStudentFlow ? 'SI' : 'NO';
+        const signatureImg = item.firmaBase64 
+          ? `<img src="${item.firmaBase64}" alt="Firma">` 
+          : '';
+
+        tr.innerHTML = `
+          <td>${dataOra}</td>
+          <td><strong>${escapeHtml(item.cognome)}</strong></td>
+          <td>${escapeHtml(item.nome)}</td>
+          <td>${escapeHtml(item.cellulare || '-')}</td>
+          <td>${escapeHtml(item.qualifica || '-')}</td>
+          <td>${escapeHtml(item.motivazione || '-')}</td>
+          <td style="text-align:center;">${signatureImg}</td>
+          <td><strong>${uscita}</strong></td>
+          <td style="text-align:center;">${modulo}</td>
+          <td style="text-align:center; height:36px;"></td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.body.classList.remove('print-mode-module');
+      document.body.classList.add('print-mode-register');
+
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+          document.body.classList.remove('print-mode-register');
+        }, 1000);
+      }, 250);
+    }
+
+    /* ==========================================================================
+       BACKUP, EXPORT & RESET MANAGEMENT
+       ========================================================================== */
+    function exportDataJSON() {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        schoolConfig: schoolConfig,
+        records: records
+      };
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+      const downloadAnchor = document.createElement('a');
+      const filename = `registro_portineria_${getTodayIsoDate()}.json`;
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", filename);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('File di backup scaricato con successo!', 'success');
+    }
+
+    function exportDataCSV() {
+      const today = getTodayIsoDate();
+      const todayRecords = records.filter(r => r.dataOraIngresso && r.dataOraIngresso.startsWith(today));
+      
+      let csv = "\uFEFFDataOra;Cognome;Nome;Cellulare;Qualifica;Motivazione;Uscita;ModuloAlunno\n";
+      todayRecords.forEach(r => {
+        csv += `"${formatDateTime(r.dataOraIngresso)}";"${r.cognome}";"${r.nome}";"${r.cellulare}";"${r.qualifica}";"${r.motivazione}";"${r.oraUscita || 'Presente'}";"${r.isStudentFlow ? 'SI' : 'NO'}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `registro_accessi_${today}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      showToast('Tabella CSV esportata!', 'success');
+    }
+
+    function importDataJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const imported = JSON.parse(evt.target.result);
+          let newRecords = [];
+
+          if (Array.isArray(imported)) {
+            newRecords = imported;
+          } else if (imported && Array.isArray(imported.records)) {
+            newRecords = imported.records;
+            if (imported.schoolConfig && confirm('Il backup contiene anche i dati della scuola. Vuoi ripristinare anche la configurazione dell\'Istituto?')) {
+              schoolConfig = imported.schoolConfig;
+              localStorage.setItem(SCHOOL_CONFIG_KEY, JSON.stringify(schoolConfig));
+              applySchoolConfig();
+            }
+          }
+
+          if (newRecords.length >= 0) {
+            if (confirm(`Trovati ${newRecords.length} record nel file. Vuoi unire questi dati al registro esistente? (Annulla per sostituire completamente)`)) {
+              const existingIds = new Set(records.map(r => r.id));
+              newRecords.forEach(r => {
+                if (!existingIds.has(r.id)) records.push(r);
+              });
+            } else {
+              records = newRecords;
+            }
+            saveRecords();
+            closeModal('modalBackup');
+            showToast('Dati importati con successo!', 'success');
+          } else {
+            showToast('Formato file non valido.', 'error');
+          }
+        } catch (err) {
+          showToast('Errore durante la lettura del file JSON.', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function confirmResetDailyRegister() {
+      const today = getTodayIsoDate();
+      const todayCount = records.filter(r => r.dataOraIngresso && r.dataOraIngresso.startsWith(today)).length;
+
+      if (todayCount === 0) {
+        showToast('Il registro odierno è già vuoto.', 'info');
+        return;
+      }
+
+      if (confirm(`Confermi di voler cancellare i ${todayCount} accessi registrati nella data odierna? Consigliamo di esportare prima un backup.`)) {
+        records = records.filter(r => !(r.dataOraIngresso && r.dataOraIngresso.startsWith(today)));
+        saveRecords();
+        showToast('Registro odierno azzerato.', 'info');
+      }
+    }
+
+    function confirmFullWipe() {
+      if (confirm('ATTENZIONE: Questa azione cancellerà TUTTO lo storico presente nel browser e la configurazione della scuola, tornando alla schermata iniziale. Confermi?')) {
+        records = [];
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(SCHOOL_CONFIG_KEY);
+        location.reload();
+      }
+    }
+
+    /* ==========================================================================
+       UTILITY HELPERS
+       ========================================================================== */
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function previewImage(src) {
+      const w = window.open("");
+      w.document.write(`<img src="${src}" style="max-width:100%; height:auto; display:block; margin:20px auto; border:1px solid #ccc; padding:10px;">`);
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+
+      let icon = 'ℹ️';
+      if (type === 'success') icon = '✅';
+      if (type === 'error') icon = '⚠️';
+
+      toast.innerHTML = `<span>${icon}</span> <span>${escapeHtml(message)}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.transition = 'opacity 0.3s, transform 0.3s';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
