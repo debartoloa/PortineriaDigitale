@@ -58,15 +58,21 @@ L'interfaccia principale è ottimizzata per l'uso immediato su tablet touch-scre
 - Dati anagrafici del genitore o delegato (Cognome, Nome, Cellulare, Luogo e Data di nascita, Ruolo).
 - **Cattura e Riconoscimento FRONTE Documento d'Identità (CIE / Patente / Carta d'Identità Cartacea):**
   - **Cornice Guida Sagomata (Aspect Ratio Standard ID-1 85.6 × 54 mm):** L'inquadratura a schermo mostra una sagoma visiva con la zona foto a sinistra e le linee anagrafiche a destra per allineare perfettamente il fronte della tessera.
-  - **Scatto Snapshot ad Alta Risoluzione con BIP Audio (Web Audio API):**
-    - Con un tocco sul pulsante pulsante verde **`📸 SCATTA E ANALIZZA FRONTE`**, l'applicazione cattura il frame alla massima risoluzione del sensore ottico, congelando l'immagine (evitando il motion blur dei video in diretta);
-    - All'istante viene riprodotto il **BIP acustico a 1046 Hz** della fotocamera/scanner;
-    - L'anteprima del documento scattato rimane visibile con badge di conferma e pulsante `🔄 Rifai Scatto` per verificare l'inquadratura.
-  - **Motore di Estrazione OCR Intelligente:** L'immagine viene analizzata (tramite Tesseract.js in CDN o motore euristico locale a contrasto elevato) per estrarre automaticamente:
-    * **Numero Documento** (formato CIE `CA12345AA`, patente o cartacea);
+  - **📐 Toolbar di Calibrazione Guida / Obiettivo (Adattabile a qualsiasi Tablet):**
+    - Controlli `🔍 -` e `🔍 +` con indicatore percentuale (da 65% a 135%) per adattare la dimensione della cornice alla lunghezza focale specifica del tablet (es. grandangolare, standard, macro);
+    - Pulsante `🔄 Cambia Fotocamera` per alternare tra gli obiettivi disponibili sul dispositivo (es. fotocamera macro, standard o frontale).
+  - **Ritaglio Matematico 1:1 (Zero Disallineamento tra Mirino e Scatto):**
+    - L'applicazione calcola al pixel le coordinate esatte dell'area inquadrata nella guida rispetto al flusso video;
+    - Al momento dello scatto, **viene estratta esattamente la porzione delimitata dalla cornice**, congelando l'anteprima nella stessa identica posizione senza slittamenti o rimpicciolimenti.
+  - **Pipeline di Ottimizzazione Contrasto & Rimozione Filigrana:**
+    - Prima dell'analisi OCR, il documento viene processato con un filtro ad alto contrasto che sbianca i motivi di sicurezza (ghiglioscé/microlinee della CIE) ed esalta l'inchiostro dei caratteri stampati.
+  - **Motore di Estrazione OCR Intelligente & Normalizzazione:**
+    * **Numero Documento** (formato CIE `CA12345AA` con auto-correzione degli errori OCR numerici tipo `O`->`0`, `I`->`1`, `S`->`5`, patente o cartacea);
     * **Cognome e Nome** del genitore/delegato;
     * **Data e Luogo di Nascita**;
     * **Scadenza e Data Rilascio** stimata.
+  - **✏️ Mini Barra di Rifinitura Rapida (Live Sync):**
+    - Subito sotto l'anteprima del documento scattato, compaiono 4 campi di controllo rapido (*Cognome, Nome, N. Documento, Data Nascita*). Se una lettera fisica del documento è rovinata o graffiata, l'operatore può ritoccarla in un secondo con sincronizzazione bidirezionale istantanea nel modulo principale.
   - **📁 Carica / Scatta da Fotocamera Nativa dello Smartphone/Tablet:** Permette all'operatore di sfruttare la fotocamera ad alta definizione del proprio tablet o smartphone (con autofocus macro e flash nativo) o caricare una foto del documento già scattata.
   - **🧪 Test Demo CIE:** Pulsante per collaudare istantaneamente il flusso di compilazione anche senza avere una carta d'identità fisica a portata di mano.
 - **PIANO B Fondamentale:** Se il documento è usurato, la fotocamera non è disponibile o l'operatore preferisce digitare, un chiaro pulsante *"✏️ Inserisci a mano"* sblocca immediatamente la compilazione manuale via tastiera (Tipo, Numero, Ente di rilascio, Data rilascio, Scadenza).

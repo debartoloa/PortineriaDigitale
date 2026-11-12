@@ -894,8 +894,8 @@
     .camera-viewport-wrapper {
       position: relative;
       width: 100%;
-      min-height: 250px;
-      height: 270px;
+      min-height: 280px;
+      height: 300px;
       background: #090d16;
       display: flex;
       align-items: center;
@@ -911,12 +911,15 @@
     }
 
     #capturedDocPreview {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      border-radius: 8px;
+      width: 320px;
+      max-width: 90%;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 12px;
       display: none;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.4), 0 4px 15px rgba(0, 0, 0, 0.6);
+      border: 3px solid #10b981;
+      transition: all 0.2s ease;
     }
 
     .camera-placeholder {
@@ -944,7 +947,7 @@
       justify-content: space-between;
       padding: 10px 14px;
       box-sizing: border-box;
-      transition: all 0.25s ease;
+      transition: all 0.2s ease;
       z-index: 5;
     }
 
@@ -1012,6 +1015,44 @@
       border-radius: 4px;
     }
 
+    /* TOOLBAR CALIBRAZIONE OBIETTIVO / GUIDA */
+    .guide-calibration-toolbar {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 7px 12px;
+      background: rgba(15, 23, 42, 0.95);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.8rem;
+      flex-wrap: wrap;
+    }
+
+    .btn-calib {
+      background: #1e293b;
+      color: #f1f5f9;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-calib:hover {
+      background: #334155;
+      border-color: #38bdf8;
+      color: #38bdf8;
+    }
+
+    .btn-calib:active {
+      transform: scale(0.96);
+    }
+
     .doc-captured-badge {
       display: none;
       background: #f0fdf4;
@@ -1019,10 +1060,50 @@
       border-radius: 10px;
       padding: 12px 16px;
       margin-bottom: 16px;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      gap: 10px;
+      gap: 12px;
       animation: fadeIn 0.3s ease;
+    }
+
+    .ocr-review-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+      width: 100%;
+    }
+
+    .ocr-review-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .ocr-review-item label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #166534;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .ocr-review-item input {
+      padding: 6px 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #0f172a;
+      background: #ffffff;
+      border: 1px solid #86efac;
+      border-radius: 6px;
+      outline: none;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      transition: border-color 0.15s ease;
+    }
+
+    .ocr-review-item input:focus {
+      border-color: #16a34a;
+      box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
     }
 
     @keyframes fadeIn {
@@ -2119,6 +2200,15 @@
             <!-- HIDDEN FILE INPUT PER SCATTO DA SMARTPHONE/TABLET -->
             <input type="file" id="fileDocInput" accept="image/*" capture="environment" style="display:none;" onchange="handleDocFileUpload(event)">
 
+            <!-- TOOLBAR DI CALIBRAZIONE OBIETTIVO E GUIDA -->
+            <div class="guide-calibration-toolbar" id="guideCalibrationToolbar">
+              <span style="font-weight: 600; color: #94a3b8;">📐 Calibrazione Guida:</span>
+              <button type="button" class="btn-calib" onclick="adjustGuideScale(-0.05)" title="Riduci cornice (se il tablet è più vicino)">🔍 -</button>
+              <span id="guideScaleDisplay" style="font-weight: 700; color: #38bdf8; min-width: 42px; text-align: center;">100%</span>
+              <button type="button" class="btn-calib" onclick="adjustGuideScale(0.05)" title="Ingrandisci cornice (se il tablet è più lontano)">🔍 +</button>
+              <button type="button" class="btn-calib" onclick="switchCameraFacing()" title="Passa tra le fotocamere del dispositivo (Macro / Grandangolo / Frontale)" style="margin-left: 6px;">🔄 Cambia Fotocamera</button>
+            </div>
+
             <!-- BARRA CONTROLLI FOTOCAMERA -->
             <div class="camera-controls-bar">
               <span class="camera-status-text" id="cameraStatusText">Fotocamera non attiva</span>
@@ -2146,18 +2236,42 @@
             </div>
           </div>
 
-          <!-- BADGE NOTIFICA DOCUMENTO ACQUISITO -->
+          <!-- BADGE NOTIFICA & RIFINITURA DATI DOCUMENTO ACQUISITO -->
           <div class="doc-captured-badge" id="docCapturedBadge">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <span style="font-size:24px;">✅</span>
-              <div>
-                <strong style="color:#166534; font-size:0.92rem;">Fronte Documento Acquisito ed Elaborato!</strong>
-                <p style="margin:0; font-size:0.8rem; color:#374151;" id="docCapturedSummary">Dati anagrafici estratti e inseriti nei campi sottostanti.</p>
+            <div style="display:flex; align-items:flex-start; gap:12px; width:100%;">
+              <span style="font-size:26px; line-height:1;">✅</span>
+              <div style="flex:1;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                  <strong style="color:#166534; font-size:0.92rem;">Fronte Documento Acquisito & Analizzato</strong>
+                  <div style="display:flex; gap:6px;">
+                    <button type="button" class="btn-action btn-action-secondary" onclick="retakeDocPhoto()" style="padding:3px 8px; font-size:0.75rem;">
+                      🔄 Rifai Scatto
+                    </button>
+                  </div>
+                </div>
+                <p style="margin:2px 0 6px 0; font-size:0.8rem; color:#374151;" id="docCapturedSummary">
+                  Dati anagrafici estratti dal fronte. Puoi ritoccarli all'istante qui sotto:
+                </p>
+                <div class="ocr-review-grid" id="ocrReviewGrid">
+                  <div class="ocr-review-item">
+                    <label>Cognome</label>
+                    <input type="text" id="ocrQuickCognome" placeholder="Cognome" oninput="syncOcrField('cognome', this.value)">
+                  </div>
+                  <div class="ocr-review-item">
+                    <label>Nome</label>
+                    <input type="text" id="ocrQuickNome" placeholder="Nome" oninput="syncOcrField('nome', this.value)">
+                  </div>
+                  <div class="ocr-review-item">
+                    <label>N. Documento</label>
+                    <input type="text" id="ocrQuickDocNum" placeholder="Es. CA12345AA" oninput="syncOcrField('docNum', this.value)">
+                  </div>
+                  <div class="ocr-review-item">
+                    <label>Data Nascita</label>
+                    <input type="date" id="ocrQuickDataNascita" oninput="syncOcrField('dataNascita', this.value)">
+                  </div>
+                </div>
               </div>
             </div>
-            <button type="button" class="btn-action btn-action-secondary" onclick="retakeDocPhoto()" style="padding:4px 10px; font-size:0.8rem;">
-              🔄 Cambia Foto
-            </button>
           </div>
 
           <!-- PIANO B: INSERIMENTO MANUALE DEL DOCUMENTO -->
@@ -2626,6 +2740,8 @@
     let records = [];
     let mediaStream = null;
     let currentStudentAction = 'ENTRARE';
+    let guideCurrentScale = 1.0;
+    let currentCameraFacing = 'environment';
 
     // Operator Kiosk Mode & PIN Security State
     let isOperatorUnlocked = false;
@@ -3421,6 +3537,8 @@
           guide.style.display = 'none';
           guide.classList.remove('captured');
         }
+        const calibBar = document.getElementById('guideCalibrationToolbar');
+        if (calibBar) calibBar.style.display = 'none';
         const badge = document.getElementById('docCapturedBadge');
         if (badge) badge.style.display = 'none';
         const btnsLive = document.getElementById('cameraBtnsLive');
@@ -3465,8 +3583,14 @@
         guide.style.display = 'none';
         guide.classList.remove('captured');
       }
+      const calibBar = document.getElementById('guideCalibrationToolbar');
+      if (calibBar) calibBar.style.display = 'none';
       const badge = document.getElementById('docCapturedBadge');
       if (badge) badge.style.display = 'none';
+      const qCog = document.getElementById('ocrQuickCognome'); if (qCog) qCog.value = '';
+      const qNom = document.getElementById('ocrQuickNome'); if (qNom) qNom.value = '';
+      const qDoc = document.getElementById('ocrQuickDocNum'); if (qDoc) qDoc.value = '';
+      const qDat = document.getElementById('ocrQuickDataNascita'); if (qDat) qDat.value = '';
       const btnsLive = document.getElementById('cameraBtnsLive');
       if (btnsLive) btnsLive.style.display = 'flex';
       const btnsReview = document.getElementById('cameraBtnsReview');
@@ -4033,6 +4157,157 @@
       }
     }
 
+    function adjustGuideScale(delta) {
+      guideCurrentScale = Math.round((guideCurrentScale + delta) * 100) / 100;
+      if (guideCurrentScale < 0.65) guideCurrentScale = 0.65;
+      if (guideCurrentScale > 1.35) guideCurrentScale = 1.35;
+
+      const guide = document.getElementById('cardFrontGuide');
+      const display = document.getElementById('guideScaleDisplay');
+      const preview = document.getElementById('capturedDocPreview');
+      const baseW = 320;
+      const baseH = 200;
+      const curW = Math.round(baseW * guideCurrentScale);
+      const curH = Math.round(baseH * guideCurrentScale);
+
+      if (guide) {
+        guide.style.width = curW + 'px';
+        guide.style.height = curH + 'px';
+      }
+      if (preview) {
+        preview.style.width = curW + 'px';
+        preview.style.height = curH + 'px';
+      }
+      if (display) {
+        display.textContent = Math.round(guideCurrentScale * 100) + '%';
+      }
+    }
+
+    async function switchCameraFacing() {
+      currentCameraFacing = (currentCameraFacing === 'environment') ? 'user' : 'environment';
+      stopCamera();
+      await toggleCamera();
+    }
+
+    function getGuideCropCoordinates(video, guide) {
+      const vW = video.videoWidth || 1280;
+      const vH = video.videoHeight || 720;
+      const vRect = video.getBoundingClientRect();
+      const gRect = guide.getBoundingClientRect();
+
+      const elemW = vRect.width;
+      const elemH = vRect.height;
+      const videoAspect = vW / vH;
+      const elemAspect = elemW / elemH;
+
+      let renderedW, renderedH, offsetX, offsetY;
+      if (videoAspect > elemAspect) {
+        renderedH = elemH;
+        renderedW = elemH * videoAspect;
+        offsetX = (renderedW - elemW) / 2;
+        offsetY = 0;
+      } else {
+        renderedW = elemW;
+        renderedH = elemW / videoAspect;
+        offsetX = 0;
+        offsetY = (renderedH - elemH) / 2;
+      }
+
+      const scaleX = vW / renderedW;
+      const scaleY = vH / renderedH;
+
+      const relX = gRect.left - vRect.left;
+      const relY = gRect.top - vRect.top;
+
+      let sx = (relX + offsetX) * scaleX;
+      let sy = (relY + offsetY) * scaleY;
+      let sw = gRect.width * scaleX;
+      let sh = gRect.height * scaleY;
+
+      // Add a slight margin (1.5%) so edge characters aren't clipped
+      const padX = sw * 0.015;
+      const padY = sh * 0.015;
+      sx = Math.max(0, sx - padX);
+      sy = Math.max(0, sy - padY);
+      sw = Math.min(vW - sx, sw + padX * 2);
+      sh = Math.min(vH - sy, sh + padY * 2);
+
+      return { sx, sy, sw, sh };
+    }
+
+    function preprocessCardImage(sourceCanvas) {
+      const w = sourceCanvas.width;
+      const h = sourceCanvas.height;
+      const pCanvas = document.createElement('canvas');
+      pCanvas.width = w;
+      pCanvas.height = h;
+      const pCtx = pCanvas.getContext('2d');
+      pCtx.drawImage(sourceCanvas, 0, 0);
+
+      try {
+        const imgData = pCtx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+
+        // Luminance histogram
+        const hist = new Int32Array(256);
+        for (let i = 0; i < d.length; i += 4) {
+          const lum = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+          hist[lum]++;
+        }
+
+        const total = w * h;
+        let minCut = 0, maxCut = 255;
+        let accum = 0;
+        for (let i = 0; i < 256; i++) {
+          accum += hist[i];
+          if (accum >= total * 0.04) { minCut = i; break; }
+        }
+        accum = 0;
+        for (let i = 255; i >= 0; i--) {
+          accum += hist[i];
+          if (accum >= total * 0.04) { maxCut = i; break; }
+        }
+        if (maxCut <= minCut) { minCut = 0; maxCut = 255; }
+        const range = maxCut - minCut;
+
+        // Binarize / filter watermark patterns
+        for (let i = 0; i < d.length; i += 4) {
+          const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          let stretched = ((lum - minCut) / range) * 255;
+          if (stretched > 175) {
+            stretched = 255;
+          } else if (stretched < 95) {
+            stretched = Math.max(0, stretched * 0.6);
+          }
+          d[i] = stretched;
+          d[i + 1] = stretched;
+          d[i + 2] = stretched;
+        }
+
+        pCtx.putImageData(imgData, 0, 0);
+        return pCanvas;
+      } catch (err) {
+        console.warn('Preprocessing canvas fallito:', err);
+        return sourceCanvas;
+      }
+    }
+
+    function syncOcrField(field, val) {
+      if (field === 'cognome') {
+        const el = document.getElementById('sGenitoreCognome');
+        if (el) el.value = val;
+      } else if (field === 'nome') {
+        const el = document.getElementById('sGenitoreNome');
+        if (el) el.value = val;
+      } else if (field === 'docNum') {
+        const el = document.getElementById('sDocNum');
+        if (el) el.value = val;
+      } else if (field === 'dataNascita') {
+        const el = document.getElementById('sGenitoreDataNascita');
+        if (el) el.value = val;
+      }
+    }
+
     async function toggleCamera() {
       const video = document.getElementById('cameraVideo');
       const placeholder = document.getElementById('cameraPlaceholder');
@@ -4043,6 +4318,7 @@
       const btnCapture = document.getElementById('btnCaptureDocFront');
       const btnsLive = document.getElementById('cameraBtnsLive');
       const btnsReview = document.getElementById('cameraBtnsReview');
+      const calibBar = document.getElementById('guideCalibrationToolbar');
 
       if (mediaStream) {
         stopCamera();
@@ -4053,7 +4329,7 @@
         statusText.textContent = "Avvio fotocamera in corso...";
         mediaStream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: 'environment',
+            facingMode: currentCameraFacing,
             width: { ideal: 1920, min: 1280 },
             height: { ideal: 1080, min: 720 }
           }
@@ -4067,11 +4343,12 @@
           guide.style.display = 'flex';
           guide.classList.remove('captured');
         }
+        if (calibBar) calibBar.style.display = 'flex';
         if (btnsLive) btnsLive.style.display = 'flex';
         if (btnsReview) btnsReview.style.display = 'none';
         if (btnCapture) btnCapture.style.display = 'inline-flex';
 
-        statusText.textContent = "🟢 Fotocamera attiva. Inquadra il FRONTE del documento e premi SCATTA.";
+        statusText.textContent = "🟢 Fotocamera attiva. Inquadra il FRONTE nella guida e tocca SCATTA.";
         btnToggle.textContent = "⏹️ Chiudi Fotocamera";
         btnToggle.classList.remove('btn-action-primary');
         btnToggle.classList.add('btn-action-danger');
@@ -4094,9 +4371,11 @@
       const statusText = document.getElementById('cameraStatusText');
       const btnToggle = document.getElementById('btnToggleCamera');
       const btnCapture = document.getElementById('btnCaptureDocFront');
+      const calibBar = document.getElementById('guideCalibrationToolbar');
 
       if (video) video.style.display = 'none';
       if (guide) guide.style.display = 'none';
+      if (calibBar) calibBar.style.display = 'none';
       if (btnCapture) btnCapture.style.display = 'none';
 
       // If no photo was captured, restore the placeholder
@@ -4124,39 +4403,44 @@
       const statusText = document.getElementById('cameraStatusText');
       const btnsLive = document.getElementById('cameraBtnsLive');
       const btnsReview = document.getElementById('cameraBtnsReview');
+      const calibBar = document.getElementById('guideCalibrationToolbar');
 
-      if (!video || !canvas) return;
+      if (!video || !canvas || !guide) return;
 
       // Play camera shutter BEEP!
       playScannerBeep();
 
-      const w = video.videoWidth || 1280;
-      const h = video.videoHeight || 720;
-      canvas.width = w;
-      canvas.height = h;
+      // 1. Calculate exact crop matching the on-screen guide
+      const crop = getGuideCropCoordinates(video, guide);
+
+      // 2. High-resolution canvas matching standard ID-1 aspect ratio (1200 x 756 px)
+      const cropW = 1200;
+      const cropH = 756;
+      canvas.width = cropW;
+      canvas.height = cropH;
 
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, w, h);
+      ctx.drawImage(video, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, cropW, cropH);
 
-      const capturedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const capturedDataUrl = canvas.toDataURL('image/jpeg', 0.95);
       currentCapturedDocPhoto = capturedDataUrl;
 
-      // Display photo preview in the box
+      // 3. Freeze preview in the exact rectangle of the guide (1:1 correspondence)
       if (previewImg) {
         previewImg.src = capturedDataUrl;
+        previewImg.style.width = guide.style.width || '320px';
+        previewImg.style.height = guide.style.height || '200px';
         previewImg.style.display = 'block';
       }
       video.style.display = 'none';
 
-      if (guide) {
-        guide.classList.add('captured');
-        guide.style.display = 'flex';
-      }
+      if (guide) guide.style.display = 'none';
+      if (calibBar) calibBar.style.display = 'none';
 
       if (btnsLive) btnsLive.style.display = 'none';
       if (btnsReview) btnsReview.style.display = 'flex';
 
-      if (statusText) statusText.textContent = "🔍 Elaborazione OCR e lettura testo fronte in corso...";
+      if (statusText) statusText.textContent = "🔍 Ottimizzazione contrasto ed elaborazione OCR in corso...";
 
       // Stop video stream
       if (mediaStream) {
@@ -4198,6 +4482,7 @@
           const statusText = document.getElementById('cameraStatusText');
           const btnsLive = document.getElementById('cameraBtnsLive');
           const btnsReview = document.getElementById('cameraBtnsReview');
+          const calibBar = document.getElementById('guideCalibrationToolbar');
 
           // Play BEEP
           playScannerBeep();
@@ -4215,10 +4500,8 @@
           }
           if (video) video.style.display = 'none';
           if (placeholder) placeholder.style.display = 'none';
-          if (guide) {
-            guide.style.display = 'flex';
-            guide.classList.add('captured');
-          }
+          if (guide) guide.style.display = 'none';
+          if (calibBar) calibBar.style.display = 'none';
           if (btnsLive) btnsLive.style.display = 'none';
           if (btnsReview) btnsReview.style.display = 'flex';
 
@@ -4240,6 +4523,7 @@
       const badge = document.getElementById('docCapturedBadge');
       const btnsLive = document.getElementById('cameraBtnsLive');
       const btnsReview = document.getElementById('cameraBtnsReview');
+      const calibBar = document.getElementById('guideCalibrationToolbar');
 
       if (previewImg) previewImg.style.display = 'none';
       if (guide) {
@@ -4248,6 +4532,7 @@
       }
       if (placeholder) placeholder.style.display = 'flex';
       if (badge) badge.style.display = 'none';
+      if (calibBar) calibBar.style.display = 'none';
       if (btnsLive) btnsLive.style.display = 'flex';
       if (btnsReview) btnsReview.style.display = 'none';
 
@@ -4257,14 +4542,23 @@
     async function processDocImageOCR(canvas) {
       const statusText = document.getElementById('cameraStatusText');
 
-      // 1. Tesseract.js in-browser OCR engine
+      // 1. Contrast & watermark optimization filter
+      const optimizedCanvas = preprocessCardImage(canvas);
+
+      // 2. Tesseract.js in-browser OCR engine
       if (window.Tesseract && typeof window.Tesseract.recognize === 'function') {
         try {
-          const result = await window.Tesseract.recognize(canvas, 'ita', {
+          if (statusText) statusText.textContent = "🔍 Inizializzazione motore OCR (italiano)...";
+
+          const result = await window.Tesseract.recognize(optimizedCanvas, 'ita', {
             logger: m => {
-              if (m.status === 'recognizing text' && statusText) {
-                const pct = Math.round((m.progress || 0) * 100);
-                statusText.textContent = `🔍 Lettura testo fronte CIE... ${pct}%`;
+              if (statusText) {
+                if (m.status === 'recognizing text') {
+                  const pct = Math.round((m.progress || 0) * 100);
+                  statusText.textContent = `🔍 Lettura testo fronte CIE... ${pct}%`;
+                } else if (m.status === 'loading language traineddata' || m.status === 'loading tesseract core') {
+                  statusText.textContent = `📥 Caricamento modelli OCR...`;
+                }
               }
             }
           });
@@ -4280,7 +4574,7 @@
         }
       }
 
-      // 2. Fallback recognizer if offline or low-contrast
+      // 3. Fallback recognizer if offline or low-contrast
       parseAndApplyDocFrontFallback(canvas);
     }
 
@@ -4301,11 +4595,20 @@
       let tipoDoc = 'C.I. Elettronica (CIE)';
 
       // 1. Match Italian CIE Document Number (2 letters + 5 digits + 2 letters e.g. CA12345AA)
-      const cieNumMatch = text.match(/\b([A-Z]{2}[0-9]{5}[A-Z]{2})\b/);
-      if (cieNumMatch) {
-        docNum = cieNumMatch[1];
-        tipoDoc = 'C.I. Elettronica (CIE)';
-      } else {
+      // Normalizing OCR misreads (O->0, I/l->1, S->5 in the numeric middle portion)
+      for (const l of lines) {
+        const cieM = l.match(/\b([A-Z]{2})\s?([0-9OIlS]{5})\s?([A-Z]{2})\b/i);
+        if (cieM) {
+          const prefix = cieM[1].toUpperCase();
+          const mid = cieM[2].toUpperCase().replace(/O/g, '0').replace(/[Il]/g, '1').replace(/S/g, '5');
+          const suffix = cieM[3].toUpperCase();
+          docNum = prefix + mid + suffix;
+          tipoDoc = 'C.I. Elettronica (CIE)';
+          break;
+        }
+      }
+
+      if (!docNum) {
         const paperMatch = text.match(/\b([A-Z]{2}\s?[0-9]{6,7})\b/);
         if (paperMatch) {
           docNum = paperMatch[1].replace(/\s/g, '');
@@ -4349,23 +4652,23 @@
         const line = lines[i];
 
         if ((line.includes('COGNOME') || line.includes('SURNAME')) && i + 1 < lines.length) {
-          const next = lines[i + 1].replace(/[^A-Z\s]/g, '').trim();
+          let next = lines[i + 1].replace(/[^A-Z\s]/g, '').trim();
           if (next && next.length > 1 && !next.includes('NOME')) {
             cognome = next;
           }
         }
 
         if ((line.includes('NOME') || line.includes('NAME')) && !line.includes('COGNOME') && i + 1 < lines.length) {
-          const next = lines[i + 1].replace(/[^A-Z\s]/g, '').trim();
+          let next = lines[i + 1].replace(/[^A-Z\s]/g, '').trim();
           if (next && next.length > 1 && !next.includes('LUOGO')) {
             nome = next;
           }
         }
 
         if ((line.includes('LUOGO') || line.includes('PLACE') || line.includes('NATO')) && i + 1 < lines.length) {
-          const next = lines[i + 1].replace(/[0-9\/\.\-]/g, '').replace(/[^A-Z\s\(\)]/g, '').trim();
+          let next = lines[i + 1].replace(/[0-9\/\.\-]/g, '').replace(/[^A-Z\s\(\)]/g, '').trim();
           if (next && next.length > 2) {
-            luogoNascita = next;
+            luogoNascita = next.replace(/DATA|NASCITA|DATE|BIRTH/gi, '').trim();
           }
         }
       }
@@ -4384,7 +4687,7 @@
       if (statusText) statusText.textContent = "✅ Analisi fronte completata con successo!";
       if (badge) badge.style.display = 'flex';
       if (summary) {
-        summary.textContent = `Fronte elaborato: ${cognome ? cognome + ' ' + nome : 'Dati estratti e precompilati nei campi'}.`;
+        summary.textContent = `Fronte analizzato: ${cognome ? cognome + ' ' + nome : 'dati estratti'}. Verifica o ritocca all'occorrenza.`;
       }
 
       showToast('✅ Dati fronte documento estratti con successo!', 'success');
@@ -4411,7 +4714,7 @@
       if (statusText) statusText.textContent = "✅ Foto fronte documento acquisita!";
       if (badge) badge.style.display = 'flex';
       if (summary) {
-        summary.textContent = `Fronte acquisito: ${data.cognome} ${data.nome} - Doc. ${data.docNum}`;
+        summary.textContent = `Fronte acquisito: ${data.cognome} ${data.nome} - Doc. ${data.docNum}. Verifica i dati sotto.`;
       }
 
       showToast('✅ Fronte documento acquisito! Dati inseriti nel modulo.', 'success');
@@ -4419,11 +4722,27 @@
 
     function applyExtractedDocData(data) {
       if (data.docTipo) document.getElementById('sDocTipo').value = data.docTipo;
-      if (data.docNum) document.getElementById('sDocNum').value = data.docNum;
-      if (data.cognome) document.getElementById('sGenitoreCognome').value = data.cognome;
-      if (data.nome) document.getElementById('sGenitoreNome').value = data.nome;
+      if (data.docNum) {
+        document.getElementById('sDocNum').value = data.docNum;
+        const q = document.getElementById('ocrQuickDocNum');
+        if (q) q.value = data.docNum;
+      }
+      if (data.cognome) {
+        document.getElementById('sGenitoreCognome').value = data.cognome;
+        const q = document.getElementById('ocrQuickCognome');
+        if (q) q.value = data.cognome;
+      }
+      if (data.nome) {
+        document.getElementById('sGenitoreNome').value = data.nome;
+        const q = document.getElementById('ocrQuickNome');
+        if (q) q.value = data.nome;
+      }
       if (data.luogoNascita) document.getElementById('sGenitoreLuogo').value = data.luogoNascita;
-      if (data.dataNascita) document.getElementById('sGenitoreDataNascita').value = data.dataNascita;
+      if (data.dataNascita) {
+        document.getElementById('sGenitoreDataNascita').value = data.dataNascita;
+        const q = document.getElementById('ocrQuickDataNascita');
+        if (q) q.value = data.dataNascita;
+      }
       if (data.dataScadenza) document.getElementById('sDocScad').value = data.dataScadenza;
       if (data.ente) document.getElementById('sDocEnte').value = data.ente;
 
