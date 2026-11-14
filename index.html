@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="pageTitle">Portineria Digitale Scolastica</title>
+
+  <!-- PWA Meta Tags & Manifest Reale -->
+  <meta name="theme-color" content="#1a365d">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Portineria">
+  <meta name="description" content="Sistema kiosk PWA per la gestione portineria, accessi visitatori, OCR documenti e moduli ingresso/uscita alunni per Istituti Scolastici">
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
+
+  <link rel="stylesheet" href="./css/style.css">
+
+  <!-- TESSERACT.JS OCR CLIENT-SIDE ENGINE (Cachato offline dal Service Worker) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js" defer></script>
+  <script type="module" src="./js/app.js"></script>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       SCREEN 1: SCHERMATA WIZARD CONFIGURAZIONE SCUOLA (PRIMO AVVIO)
+       ========================================================================== -->
+  <section id="screenWizard" class="wizard-container" style="display: none;" aria-label="Configurazione iniziale Istituto">
+    <div class="wizard-card">
+      <div class="wizard-header">
+        <span class="wizard-header-icon" aria-hidden="true">🏫</span>
+        <h2 id="wizardTitle">Benvenuto in Portineria Digitale!</h2>
+        <p id="wizardSubtitle">Per iniziare, inserisci il nome del tuo Istituto Scolastico e gli indirizzi di studio o plessi presenti.</p>
+      </div>
+
+      <div class="wizard-body">
+        <div class="wizard-sample-box">
+          <span>💡 Vuoi provare subito con dati reali?</span>
+          <button type="button" class="btn-action btn-action-secondary" onclick="fillSampleSchoolConfig()" style="background:#fff; border-color:#38a169; color:#22543d; font-weight:700;">
+            ⚡ Carica Esempio (I.I.S. Mattei Castrovillari)
+          </button>
+        </div>
+
+        <form id="formSchoolConfigWizard" onsubmit="saveSchoolConfig(event)">
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label for="cfgSchoolName" style="font-size: 0.95rem;">Nome Completo dell'Istituto Superiore / Scuola <span class="required">*</span></label>
+              <input type="text" id="cfgSchoolName" class="form-control" required placeholder="Es. I.I.S. 'E. Mattei'">
+            </div>
+
+            <div class="form-group form-group-full">
+              <label for="cfgSchoolCity" style="font-size: 0.95rem;">Città / Sede Principale (opzionale)</label>
+              <input type="text" id="cfgSchoolCity" class="form-control" placeholder="Es. Castrovillari (CS)">
+            </div>
+
+            <div class="form-group form-group-full" style="margin-top: 10px;">
+              <label for="cfgCourseInput" style="font-size: 0.95rem;">Indirizzi di Studio / Sedi / Plessi dell'Istituto <span class="required">*</span></label>
+              <p style="font-size:0.82rem; color:#718096; margin-bottom:8px;">
+                Digita ciascun indirizzo e tocca <strong>"Aggiungi"</strong> (o premi Invio).
+              </p>
+
+              <div style="display:flex; gap:10px;">
+                <input type="text" id="cfgCourseInput" class="form-control" placeholder="Es. Liceo Scientifico, Liceo Classico, Liceo Linguistico...">
+                <button type="button" class="btn-action btn-action-primary" onclick="addCourseFromInput()" style="padding:10px 20px; font-size:0.95rem;">
+                  ➕ Aggiungi
+                </button>
+              </div>
+
+              <div class="courses-tag-container" id="cfgCoursesListContainer">
+                <span id="cfgNoCoursesMsg" style="color:#a0aec0; font-size:0.88rem; font-style:italic;">
+                  Nessun indirizzo inserito. Digita un indirizzo sopra e tocca "Aggiungi".
+                </span>
+              </div>
+            </div>
+
+            <div class="form-group form-group-full" style="margin-top: 14px; background: #f8fafc; padding: 16px 20px; border-radius: 12px; border: 1.5px solid #e2e8f0;">
+              <label for="cfgSchoolPin" style="font-size: 0.95rem; color: var(--primary);">🔒 PIN di Sicurezza per il Personale Scolastico <span style="font-size:0.82rem; font-weight:normal; color:#718096;">(default: 1234 · salvato con hash SHA-256)</span></label>
+              <p style="font-size: 0.82rem; color: #718096; margin-bottom: 8px;">
+                Protegge il registro accessi e le funzioni riservate dalla vista dei visitatori (conforme GDPR).
+              </p>
+              <input type="password" id="cfgSchoolPin" class="form-control" inputmode="numeric" maxlength="6" value="" placeholder="Es. 1234 (lascia vuoto per mantenere attuale)" style="max-width: 280px; font-size: 1.15rem; letter-spacing: 4px; text-align: center;">
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:32px; border-top:1px solid #e2e8f0; padding-top:20px; gap:12px; flex-wrap:wrap;">
+            <button type="button" class="btn-action btn-action-secondary" id="btnWizardBackToDashboard" onclick="cancelWizardAndReturn()" style="display:none; padding:12px 20px; font-size:0.95rem;">
+              ← Annulla e Torna alla Dashboard
+            </button>
+            <div style="flex:1;"></div>
+            <button type="submit" class="btn-action btn-action-primary" style="padding:14px 30px; font-size:1.1rem; font-weight:800; background: linear-gradient(135deg, #0f766e 0%, #0d9488 100%); border-radius:10px;">
+              🚀 Salva e Accedi alla Portineria
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==========================================================================
+       SCREEN 2: DASHBOARD PORTINERIA KIOSK
+       ========================================================================== -->
+  <div id="screenDashboard" style="display: none; min-height: 100vh; flex-direction: column;">
+
+    <header class="app-header">
+      <div class="header-content">
+        <div class="institute-info" onclick="handleProtectedAction('dati_scuola')" title="Clicca per modificare i dati della scuola (Richiede PIN)">
+          <div class="institute-logo" aria-hidden="true">🏫</div>
+          <div class="institute-titles">
+            <h1 id="headerSchoolTitle">Nome Istituto</h1>
+            <p id="headerSchoolSubtitle">Portineria Digitale</p>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <!-- Stato connessione & PWA -->
+          <div id="connectionStatusPill" class="connection-status-pill" aria-live="polite" title="Stato rete e modalità PWA">
+            <span class="status-dot"></span>
+            <span id="connectionStatusText">Online</span>
+          </div>
+
+          <!-- Pulsante Installazione PWA -->
+          <button type="button" class="btn-header-tool btn-install-pwa" id="btnInstallApp" onclick="handleInstallClick()" style="display: none;" title="Installa l'app sul dispositivo per uso Kiosk a schermo intero">
+            📲 <span>Installa App</span>
+          </button>
+
+          <div class="live-clock-badge">
+            <span class="live-clock-time" id="clockTime">--:--:--</span>
+            <span class="live-clock-date" id="clockDate">Caricamento data...</span>
+          </div>
+
+          <button type="button" class="btn-header-tool" id="btnHeaderOperatorMode" onclick="toggleOperatorMode()" style="background: rgba(255,255,255,0.18);">
+            🔒 <span>Accesso Staff</span>
+          </button>
+
+          <button type="button" class="btn-header-tool" id="btnHeaderSchoolData" onclick="handleProtectedAction('dati_scuola')" title="Personalizza Nome Scuola e Indirizzi">
+            🏛️ <span>Dati Scuola</span>
+          </button>
+
+          <button type="button" class="btn-header-tool" id="btnHeaderBackup" onclick="handleProtectedAction('backup')" title="Gestione Backup e Dati">
+            ⚙️ <span>Dati &amp; Backup</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+
+      <!-- CONTATORI REAL-TIME -->
+      <section class="stats-bar" aria-label="Statistiche giornaliere">
+        <div class="stat-card" style="cursor: pointer;" onclick="handleProtectedAction('quick_exit')" title="Clicca per registrare un'uscita rapida">
+          <div class="stat-icon present" aria-hidden="true">🟢</div>
+          <div class="stat-details">
+            <div class="stat-value" id="statPresentCount">0</div>
+            <div class="stat-label">Presenti in Istituto</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon total" aria-hidden="true">🚪</div>
+          <div class="stat-details">
+            <div class="stat-value" id="statTotalToday">0</div>
+            <div class="stat-label">Ingressi Totali Oggi</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon students" aria-hidden="true">👨‍🎓</div>
+          <div class="stat-details">
+            <div class="stat-value" id="statStudentsToday">0</div>
+            <div class="stat-label">Pratiche Alunni</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon exits" aria-hidden="true">🏃</div>
+          <div class="stat-details">
+            <div class="stat-value" id="statExitsToday">0</div>
+            <div class="stat-label">Uscite Registrate</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TRE FLUSSI PRINCIPALI KIOSK -->
+      <section class="hero-actions-container" aria-label="Azioni rapide portineria">
+        <button type="button" class="hero-btn-large hero-btn-visitor" onclick="openVisitorModal()">
+          <span class="hero-btn-icon-top" aria-hidden="true">🚪</span>
+          <h3>REGISTRA INGRESSO VISITATORE STANDARD</h3>
+          <p>Docenti · Personale ATA · Manutentori · Fornitori · Genitori · Esterni</p>
+        </button>
+
+        <button type="button" class="hero-btn-large hero-btn-student" onclick="openStudentModal()">
+          <span class="hero-btn-icon-top" aria-hidden="true">👨‍🎓</span>
+          <h3>GESTIONE ALUNNI</h3>
+          <p>Ingresso posticipato / Uscita anticipata (Genitori o delegati autorizzati)</p>
+        </button>
+
+        <button type="button" class="hero-btn-exit-bar" onclick="handleProtectedAction('quick_exit')">
+          <span class="hero-btn-exit-title">
+            <span aria-hidden="true">🏃</span> REGISTRA USCITA
+          </span>
+          <span class="hero-exit-badge-pill" id="heroExitBadgeCount">0</span>
+          <span class="hero-exit-badge-text">presenti</span>
+        </button>
+      </section>
+
+      <!-- REGISTRO ACCESSI (PROTETTO DA PRIVACY SHIELD) -->
+      <section class="register-card" aria-label="Registro accessi">
+        <div class="register-header">
+          <div class="register-title">
+            <h2>📋 Registro Accessi</h2>
+            <span class="badge" id="registerDateBadge">Oggi</span>
+            <span class="badge" id="operatorStatusBadge" style="background:#718096;">🔒 Riservato Staff</span>
+          </div>
+
+          <div class="register-toolbar" id="registerToolbarUnlocked" style="display:none;">
+            <div class="date-filter-group" title="Consulta lo storico multi-giorno">
+              <label for="registerDateFilter" style="font-size:0.78rem; font-weight:700; color:#4a5568;">📅 Data:</label>
+              <input type="date" id="registerDateFilter" class="date-filter-input" onchange="onRegisterDateChange()">
+              <button type="button" class="btn-clear-sig" id="btnResetDateToday" onclick="resetRegisterDateToday()" title="Torna alla data odierna">Oggi</button>
+            </div>
+
+            <div class="search-input-wrapper">
+              <span class="search-icon" aria-hidden="true">🔍</span>
+              <input type="text" id="searchInput" class="search-input" placeholder="Cerca cognome, nome, qualifica..." oninput="filterRegister()">
+            </div>
+
+            <button type="button" class="btn-action btn-action-primary" onclick="printDailyRegister()">
+              🖨️ <span>Stampa Registro</span>
+            </button>
+
+            <button type="button" class="btn-action btn-action-secondary" onclick="exportDataJSON()">
+              📥 <span>Esporta</span>
+            </button>
+
+            <button type="button" class="btn-action btn-action-danger" onclick="confirmResetDailyRegister()">
+              🗑️ <span>Reset Giorno</span>
+            </button>
+
+            <button type="button" class="btn-action btn-action-secondary" onclick="openChangePinModal()" title="Modifica PIN di sicurezza">
+              🔑 <span>Cambia PIN</span>
+            </button>
+
+            <button type="button" class="btn-action btn-action-secondary" onclick="lockOperatorMode(true)" title="Blocca visualizzazione registro">
+              🔒 <span>Blocca</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- PRIVACY SHIELD GDPR -->
+        <div id="registerLockedPrivacyBox" style="text-align: center; padding: 48px 24px; background: #fafbfc; border-radius: 0 0 14px 14px; border-top: 1px solid #e2e8f0;">
+          <div style="font-size: 54px; margin-bottom: 12px; line-height: 1;" aria-hidden="true">🛡️</div>
+          <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--primary); margin-bottom: 8px;">Registro Presenze Riservato</h3>
+          <p style="max-width: 580px; margin: 0 auto 20px auto; color: var(--text-muted); font-size: 0.92rem; line-height: 1.5;">
+            Ai sensi del <strong>GDPR (Regolamento UE 2016/679)</strong> sulla privacy, l'elenco dei visitatori, dei recapiti telefonici e degli alunni registrati è protetto ed accessibile esclusivamente al Personale Scolastico autorizzato.
+          </p>
+          <button type="button" class="btn-action btn-action-primary" onclick="promptPinModal('unlock_table')" style="padding: 12px 28px; font-size: 1rem; border-radius: 10px; font-weight: 700;">
+            🔑 Inserisci PIN Personale per Visualizzare
+          </button>
+        </div>
+
+        <!-- TABELLA REGISTRO -->
+        <div class="table-container" id="registerTableContainer" style="display:none;">
+          <table class="table-register" id="registerTable">
+            <thead>
+              <tr>
+                <th>Data e Ora</th>
+                <th>Cognome</th>
+                <th>Nome</th>
+                <th>N. Cellulare</th>
+                <th>Qualifica</th>
+                <th>Motivazione</th>
+                <th>Firma</th>
+                <th>Stato / Uscita</th>
+                <th>Modulo Autorizzazione</th>
+                <th>Azioni</th>
+              </tr>
+            </thead>
+            <tbody id="registerTableBody"></tbody>
+          </table>
+
+          <div id="tableEmptyState" class="empty-state">
+            <div class="empty-state-icon" aria-hidden="true">📝</div>
+            <h3>Nessun accesso registrato per la data selezionata</h3>
+            <p>Usa i pulsanti in alto per registrare un visitatore o una pratica alunno, oppure seleziona un'altra data.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 1: REGISTRA INGRESSO VISITATORE STANDARD
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalVisitor" role="dialog" aria-modal="true" aria-labelledby="modalVisitorTitle">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modalVisitorTitle">🚪 Registrazione Ingresso Visitatore Standard</h3>
+        <button type="button" class="modal-close-btn" onclick="closeModal('modalVisitor')" aria-label="Chiudi">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="formVisitor" onsubmit="saveVisitorEntry(event)">
+
+          <div class="visitor-lookup-card" id="visitorLookupContainerVisitor" style="display: none;">
+            <label for="visitorLookupInputVisitor" style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <span>🔎</span> Persona già registrata? Cerca e richiama i dati (facoltativo)
+            </label>
+            <div style="position: relative;">
+              <input type="text" id="visitorLookupInputVisitor" class="form-control" placeholder="Digita cognome o numero di cellulare..." oninput="handleVisitorLookup(this.value, 'visitor')" autocomplete="off">
+              <div id="visitorLookupResultsVisitor" class="lookup-dropdown-results" style="display: none;"></div>
+            </div>
+          </div>
+
+          <!-- SCANSIONE DOCUMENTO OPZIONALE (SOLO COGNOME E NOME) -->
+          <div class="visitor-ocr-toggle-bar">
+            <div class="visitor-ocr-toggle-text">
+              <strong>🪪 Compila da Documento d'Identità (facoltativo)</strong>
+              <span>Estrae automaticamente solo <em>Cognome</em> e <em>Nome</em> via OCR</span>
+            </div>
+            <button type="button" class="btn-action btn-action-secondary" id="btnToggleVisitorOcr" onclick="toggleVisitorOcrScanner()">
+              📸 Scansiona Documento
+            </button>
+          </div>
+          <div id="visitorScannerMount" style="display: none; margin-bottom: 16px;"></div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="vCognome">Cognome <span class="required">*</span></label>
+              <input type="text" id="vCognome" class="form-control" required placeholder="Es. Rossi">
+            </div>
+
+            <div class="form-group">
+              <label for="vNome">Nome <span class="required">*</span></label>
+              <input type="text" id="vNome" class="form-control" required placeholder="Es. Mario">
+            </div>
+
+            <div class="form-group">
+              <label for="vCellulare">Numero di Cellulare <span class="required">*</span></label>
+              <input type="tel" id="vCellulare" class="form-control" required placeholder="Es. 333 1234567">
+            </div>
+
+            <div class="form-group">
+              <label for="vQualifica">Qualifica <span class="required">*</span></label>
+              <select id="vQualifica" class="form-control" required>
+                <option value="Docente">Docente</option>
+                <option value="Personale ATA">Personale ATA</option>
+                <option value="Manutentore / Tecnico">Manutentore / Tecnico</option>
+                <option value="Fornitore / Corriere">Fornitore / Corriere</option>
+                <option value="Genitore">Genitore</option>
+                <option value="Tirocinante / Esperto Esterno">Tirocinante / Esperto Esterno</option>
+                <option value="Altro">Altro Visitatore</option>
+              </select>
+            </div>
+
+            <div class="form-group form-group-full">
+              <label for="vMotivazione">Motivazione Accesso <span class="required">*</span></label>
+              <select id="vMotivazione" class="form-control" required>
+                <option value="Segreteria Didattica / Amministrativa">Segreteria Didattica / Amministrativa</option>
+                <option value="Presidenza / Dirigenza">Presidenza / Dirigenza</option>
+                <option value="Ricevimento Docenti / Colloquio">Ricevimento Docenti / Colloquio</option>
+                <option value="Intervento Manutenzione / Assistenza">Intervento Manutenzione / Assistenza</option>
+                <option value="Consegna Merci / Documenti">Consegna Merci / Documenti</option>
+                <option value="Servizio / Mansione Giornaliera">Servizio / Mansione Giornaliera</option>
+                <option value="Altro">Altra motivazione</option>
+              </select>
+            </div>
+
+            <div class="form-group form-group-full">
+              <label for="vNote">Note aggiuntive / Persona da incontrare (opzionale)</label>
+              <input type="text" id="vNote" class="form-control" placeholder="Es. Ufficio personale, Prof. Bianchi">
+            </div>
+
+            <div class="form-group form-group-full">
+              <label>Firma Digitale Visitatore <span class="required">*</span></label>
+              <div class="signature-container" id="sigContainerVisitor">
+                <canvas id="canvasSigVisitor" class="signature-canvas"></canvas>
+                <div class="signature-toolbar">
+                  <span>Firma nel riquadro con dito o mouse</span>
+                  <button type="button" class="btn-clear-sig" onclick="clearSignature('visitor')">Pulisci firma</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer" style="padding-left:0; padding-right:0; margin-top:20px; border-bottom:0;">
+            <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalVisitor')">Annulla</button>
+            <button type="submit" class="btn-action btn-action-primary" style="padding:10px 20px; font-size:1rem;">✅ Registra Ingresso</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 2: GESTIONE ALUNNO + OCR FRONTE / RETRO MRZ + STAMPA A4
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalStudent" role="dialog" aria-modal="true" aria-labelledby="modalStudentTitle">
+    <div class="modal-dialog modal-dialog-large">
+      <div class="modal-header">
+        <h3 id="modalStudentTitle">👨‍🎓 Gestione Alunni - Ingresso Posticipato / Uscita Anticipata</h3>
+        <button type="button" class="modal-close-btn" onclick="closeModal('modalStudent')" aria-label="Chiudi">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="formStudent" onsubmit="saveStudentEntryAndPrint(event)">
+
+          <div class="visitor-lookup-card" id="visitorLookupContainerStudent" style="display: none;">
+            <label for="visitorLookupInputStudent" style="font-weight: 700; font-size: 0.88rem; color: #1e293b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+              <span>🔎</span> Persona già registrata? Cerca e richiama i dati (facoltativo)
+            </label>
+            <div style="position: relative;">
+              <input type="text" id="visitorLookupInputStudent" class="form-control" placeholder="Digita cognome o numero di cellulare..." oninput="handleVisitorLookup(this.value, 'student')" autocomplete="off">
+              <div id="visitorLookupResultsStudent" class="lookup-dropdown-results" style="display: none;"></div>
+            </div>
+          </div>
+
+          <label style="font-weight: 700; font-size: 0.95rem; margin-bottom: 8px; display:block;">Tipologia Richiesta <span class="required">*</span></label>
+          <div class="action-type-toggle">
+            <label class="action-toggle-card selected-enter" id="cardActionEnter" onclick="setActionType('ENTRARE')">
+              <input type="radio" name="studentAction" value="ENTRARE" checked>
+              <span class="icon">🟢</span>
+              <span class="title">ENTRARE (Ingresso posticipato)</span>
+            </label>
+            <label class="action-toggle-card" id="cardActionExit" onclick="setActionType('USCIRE')">
+              <input type="radio" name="studentAction" value="USCIRE">
+              <span class="icon">🔴</span>
+              <span class="title">USCIRE (Uscita anticipata)</span>
+            </label>
+          </div>
+
+          <!-- SMART CAMERA SCANNER BOX: FRONTE CIE/PATENTE + RETRO MRZ (CONDIVISO) -->
+          <div id="studentScannerMount">
+            <div id="sharedOcrWrapper">
+              <div class="camera-scanner-box">
+            <div class="ocr-mode-bar">
+              <span style="font-size: 0.8rem; font-weight: 700; color: #e2e8f0;">
+                🤖 Modalità Lettura OCR:
+              </span>
+              <div class="ocr-mode-pills" id="ocrScanModeToggle">
+                <button type="button" class="btn-ocr-mode active" id="btnModeFront" onclick="setOcrScanMode('front')">
+                  🪪 Fronte Documento
+                </button>
+                <button type="button" class="btn-ocr-mode" id="btnModeMrz" onclick="setOcrScanMode('mrz')" title="Massima precisione: legge le 3 righe MRZ sul retro CIE o 2 righe sul Passaporto">
+                  📟 Retro MRZ (CIE / Passaporto)
+                </button>
+              </div>
+            </div>
+
+            <div class="camera-viewport-wrapper" id="cameraViewportWrapper">
+              <video id="cameraVideo" playsinline autoplay muted></video>
+              <canvas id="cameraScanCanvas" style="display:none;"></canvas>
+              <img id="capturedDocPreview" alt="Foto Documento Acquisito">
+
+              <div class="camera-placeholder" id="cameraPlaceholder">
+                <span style="font-size: 42px;">🪪</span>
+                <strong style="font-size: 1.05rem; color: #f1f5f9;" id="cameraPlaceholderTitle">Acquisizione FRONTE Documento d'Identità</strong>
+                <p style="font-size: 0.82rem; max-width: 460px; color: #94a3b8; margin: 0 auto;" id="cameraPlaceholderDesc">
+                  Inquadra o carica la foto del <strong>FRONTE</strong> della CIE/Patente oppure passa alla modalità <strong>Retro MRZ</strong> per una lettura ad altissima precisione.
+                </p>
+                <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap; justify-content:center;">
+                  <button type="button" class="btn-action btn-action-primary" onclick="toggleCamera()" style="padding:10px 18px;">
+                    📸 Attiva Fotocamera
+                  </button>
+                  <button type="button" class="btn-action btn-action-secondary" onclick="triggerDocUpload()" style="padding:10px 18px; background:rgba(255,255,255,0.15); color:#fff; border-color:rgba(255,255,255,0.3);">
+                    📁 Carica / Scatta da File
+                  </button>
+                </div>
+              </div>
+
+              <div class="card-front-guide" id="cardFrontGuide" style="display: none;">
+                <div class="card-guide-header">
+                  <span>🇮🇹 Documento ID</span>
+                  <span id="guideDocTypeLabel">CIE / FRONTE</span>
+                </div>
+                <div class="card-guide-body">
+                  <div class="card-photo-silhouette">
+                    <span style="font-size:16px;">👤</span>
+                    <span>FOTO</span>
+                  </div>
+                  <div class="card-text-silhouette">
+                    <div class="card-text-line" style="width: 70%;"></div>
+                    <div class="card-text-line" style="width: 90%;"></div>
+                    <div class="card-text-line" style="width: 60%;"></div>
+                    <div class="card-text-line" style="width: 80%;"></div>
+                  </div>
+                </div>
+                <div class="card-mrz-zone">
+                  <span>I&lt;ITAXXXXXXXXX&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span>
+                  <span>810924XM310924XITA&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span>
+                  <span>COGNOME&lt;&lt;NOME&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</span>
+                </div>
+                <div class="card-guide-footer">
+                  <span id="guideFooterLabel">Posiziona il FRONTE del documento nella cornice</span>
+                </div>
+              </div>
+            </div>
+
+            <input type="file" id="fileDocInput" accept="image/*" capture="environment" style="display:none;" onchange="handleDocFileUpload(event)">
+
+            <div class="guide-calibration-toolbar" id="guideCalibrationToolbar">
+              <span style="font-weight: 600; color: #94a3b8;">📐 Calibrazione Guida:</span>
+              <button type="button" class="btn-calib" onclick="adjustGuideScale(-0.05)" title="Riduci cornice">🔍 -</button>
+              <span id="guideScaleDisplay" style="font-weight: 700; color: #38bdf8; min-width: 42px; text-align: center;">100%</span>
+              <button type="button" class="btn-calib" onclick="adjustGuideScale(0.05)" title="Ingrandisci cornice">🔍 +</button>
+              <button type="button" class="btn-calib" onclick="switchCameraFacing()" title="Passa tra le fotocamere del dispositivo" style="margin-left: 6px;">🔄 Cambia Fotocamera</button>
+            </div>
+
+            <div class="camera-controls-bar">
+              <span class="camera-status-text" id="cameraStatusText">Fotocamera non attiva</span>
+              <div class="camera-btns-group" id="cameraBtnsLive">
+                <button type="button" class="btn-action btn-action-primary" id="btnCaptureDocFront" onclick="captureAndAnalyzeDocFront()" style="display:none; font-weight:700; background:#059669; border-color:#047857;">
+                  📸 SCATTA E ANALIZZA
+                </button>
+                <button type="button" class="btn-action btn-action-secondary" id="btnToggleCamera" onclick="toggleCamera()">
+                  📸 Avvia Fotocamera
+                </button>
+                <button type="button" class="btn-action btn-action-secondary" onclick="triggerDocUpload()" title="Carica una foto del documento">
+                  📁 Carica Foto
+                </button>
+                <button type="button" class="btn-action btn-action-secondary" onclick="triggerManualScanCapture()" title="Simula una scansione con dati di prova">
+                  🧪 Test Demo CIE
+                </button>
+              </div>
+
+              <div class="camera-btns-group" id="cameraBtnsReview" style="display:none;">
+                <button type="button" class="btn-action btn-action-secondary" onclick="retakeDocPhoto()">
+                  🔄 Rifai Scatto
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- BADGE NOTIFICA & RIFINITURA DATI DOCUMENTO -->
+          <div class="doc-captured-badge" id="docCapturedBadge">
+            <div style="display:flex; align-items:flex-start; gap:12px; width:100%;">
+              <span style="font-size:26px; line-height:1;">✅</span>
+              <div style="flex:1;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                  <strong style="color:#166534; font-size:0.92rem;">Documento Acquisito &amp; Analizzato</strong>
+                  <div style="display:flex; gap:6px;">
+                    <button type="button" class="btn-action btn-action-secondary" onclick="retakeDocPhoto()" style="padding:3px 8px; font-size:0.75rem;">
+                      🔄 Rifai Scatto
+                    </button>
+                  </div>
+                </div>
+                <p style="margin:2px 0 6px 0; font-size:0.8rem; color:#374151;" id="docCapturedSummary">
+                  Dati anagrafici estratti. Verifica o ritocca all'istante qui sotto:
+                </p>
+                <div class="ocr-review-grid" id="ocrReviewGrid">
+                  <div class="ocr-review-item">
+                    <label for="ocrQuickCognome">Cognome</label>
+                    <input type="text" id="ocrQuickCognome" placeholder="Cognome" oninput="syncOcrField('cognome', this.value)">
+                  </div>
+                  <div class="ocr-review-item">
+                    <label for="ocrQuickNome">Nome</label>
+                    <input type="text" id="ocrQuickNome" placeholder="Nome" oninput="syncOcrField('nome', this.value)">
+                  </div>
+                  <div class="ocr-review-item ocr-student-only">
+                    <label for="ocrQuickDocNum">N. Documento</label>
+                    <input type="text" id="ocrQuickDocNum" placeholder="Es. CA12345AA" oninput="syncOcrField('docNum', this.value)">
+                  </div>
+                  <div class="ocr-review-item ocr-student-only">
+                    <label for="ocrQuickDataNascita">Data Nascita</label>
+                    <input type="date" id="ocrQuickDataNascita" oninput="syncOcrField('dataNascita', this.value)">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+            </div>
+          </div>
+
+          <div class="piano-b-banner">
+            <div class="piano-b-text">
+              <strong>PIANO B - Documento rovinato o fotocamera non disponibile?</strong>
+              Puoi digitare liberamente i dati anagrafici e del documento con la tastiera.
+            </div>
+            <button type="button" class="btn-action btn-action-secondary" onclick="focusManualDoc()" style="white-space: nowrap;">
+              ✏️ Inserisci a mano
+            </button>
+          </div>
+
+          <h4 style="color:var(--primary); margin: 16px 0 10px 0; font-size:1rem; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">
+            👤 Dati del Genitore o Delegato Autorizzato
+          </h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="sGenitoreCognome">Cognome Genitore/Delegato <span class="required">*</span></label>
+              <input type="text" id="sGenitoreCognome" class="form-control" required placeholder="Es. Rossi">
+            </div>
+
+            <div class="form-group">
+              <label for="sGenitoreNome">Nome Genitore/Delegato <span class="required">*</span></label>
+              <input type="text" id="sGenitoreNome" class="form-control" required placeholder="Es. Giuseppe">
+            </div>
+
+            <div class="form-group">
+              <label for="sGenitoreLuogo">Nato/a a (Comune di nascita)</label>
+              <input type="text" id="sGenitoreLuogo" class="form-control" placeholder="Es. Castrovillari (CS)">
+            </div>
+
+            <div class="form-group">
+              <label for="sGenitoreDataNascita">Nato/a il (Data di nascita)</label>
+              <input type="date" id="sGenitoreDataNascita" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label for="sGenitoreCellulare">Numero di Cellulare <span class="required">*</span></label>
+              <input type="tel" id="sGenitoreCellulare" class="form-control" required placeholder="Es. 338 9876543">
+            </div>
+
+            <div class="form-group">
+              <label for="sGenitoreRuolo">In qualità di</label>
+              <select id="sGenitoreRuolo" class="form-control">
+                <option value="padre">Padre</option>
+                <option value="madre">Madre</option>
+                <option value="delegato">Delegato autorizzato</option>
+              </select>
+            </div>
+          </div>
+
+          <h4 style="color:var(--primary); margin: 20px 0 10px 0; font-size:1rem; border-bottom:1px solid #e2e8f0; padding-bottom:4px;" id="headingDocSection">
+            🪪 Estremi Documento d'Identità del Genitore / Delegato
+          </h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="sDocTipo">Tipo Documento <span class="required">*</span></label>
+              <select id="sDocTipo" class="form-control" required>
+                <option value="C.I. Elettronica (CIE)">C.I. Elettronica (CIE)</option>
+                <option value="Carta d'Identità Cartacea">Carta d'Identità Cartacea</option>
+                <option value="Patente di Guida">Patente di Guida</option>
+                <option value="Passaporto">Passaporto</option>
+                <option value="Altro">Altro documento</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="sDocNum">Numero Documento <span class="required">*</span></label>
+              <input type="text" id="sDocNum" class="form-control" required placeholder="Es. CA00000AA">
+            </div>
+
+            <div class="form-group">
+              <label for="sDocEnte">Ente di Rilascio <span class="required">*</span></label>
+              <input type="text" id="sDocEnte" class="form-control" required placeholder="Es. Comune / Questura / MIT">
+            </div>
+
+            <div class="form-group">
+              <label for="sDocRil">Rilasciato il</label>
+              <input type="date" id="sDocRil" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label for="sDocScad">Scadenza</label>
+              <input type="date" id="sDocScad" class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label for="sOrarioRichiesto">Orario Richiesto <span class="required">*</span></label>
+              <input type="time" id="sOrarioRichiesto" class="form-control" required>
+            </div>
+          </div>
+
+          <h4 style="color:var(--primary); margin: 20px 0 10px 0; font-size:1rem; border-bottom:1px solid #e2e8f0; padding-bottom:4px;">
+            🎓 Dati Alunno e Sede / Indirizzo di Studio
+          </h4>
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label for="sAlunnoNome">Cognome e Nome Alunno/a <span class="required">*</span></label>
+              <input type="text" id="sAlunnoNome" class="form-control" required placeholder="Es. Rossi Francesco">
+            </div>
+
+            <div class="form-group">
+              <label for="sAlunnoClasse">Classe (Anno) <span class="required">*</span></label>
+              <select id="sAlunnoClasse" class="form-control" required>
+                <option value="1">1ª</option>
+                <option value="2">2ª</option>
+                <option value="3" selected>3ª</option>
+                <option value="4">4ª</option>
+                <option value="5">5ª</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="sAlunnoSezione">Sezione <span class="required">*</span></label>
+              <input type="text" id="sAlunnoSezione" class="form-control" required maxlength="4" style="text-transform:uppercase;" placeholder="Es. A, B, CSA">
+            </div>
+
+            <div class="form-group form-group-full">
+              <label>Indirizzo di Studio / Sede dell'Istituto <span class="required">*</span></label>
+              <div class="school-branches-grid" id="schoolBranchesContainer"></div>
+            </div>
+
+            <div class="form-group form-group-full">
+              <label for="sMotivazioneSelect">Motivazione Specifica <span class="required">*</span></label>
+              <select id="sMotivazioneSelect" class="form-control" onchange="handleStudentMotivazioneSelect(this.value)">
+                <option value="Motivi di famiglia">Motivi di famiglia</option>
+                <option value="Salute / Visita medica specialistica">Salute / Visita medica specialistica</option>
+                <option value="Problemi di trasporto / Logistica stradale">Problemi di trasporto / Logistica stradale</option>
+                <option value="Attività sportiva agonistica / Certificata">Attività sportiva agonistica / Certificata</option>
+                <option value="Altro">Altra motivazione (specificare sotto)</option>
+              </select>
+              <textarea id="sMotivazioneDettagli" class="form-control" rows="2" style="margin-top:6px;" placeholder="Dettagli motivazione per il modulo ufficiale..."></textarea>
+            </div>
+
+            <div class="form-group form-group-full">
+              <label>Firma Digitale del Genitore / Delegato <span class="required">*</span></label>
+              <div class="signature-container" id="sigContainerStudent">
+                <canvas id="canvasSigStudent" class="signature-canvas"></canvas>
+                <div class="signature-toolbar">
+                  <span>Firma nel riquadro con dito o penna touch</span>
+                  <button type="button" class="btn-clear-sig" onclick="clearSignature('student')">Pulisci firma</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer" style="padding-left:0; padding-right:0; margin-top:20px; border-bottom:0;">
+            <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalStudent')">Annulla</button>
+            <button type="submit" class="btn-action btn-action-primary" style="padding:10px 24px; font-size:1.05rem; background: #0f766e;">
+              💾 Registra e 🖨️ Stampa Modulo Ufficiale
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 3: USCITA RAPIDA FILTRATA (SOLO PRESENTI ATTUALI)
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalQuickExit" role="dialog" aria-modal="true" aria-labelledby="modalQuickExitTitle">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modalQuickExitTitle">🏃 Registrazione Rapida Uscita (Presenti nell'edificio)</h3>
+        <button type="button" class="modal-close-btn" onclick="closeModal('modalQuickExit')" aria-label="Chiudi">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.88rem; color:var(--text-muted); margin-bottom:14px;">
+          Questo elenco mostra <strong>esclusivamente</strong> le persone attualmente all'interno dell'Istituto. Tocca il pulsante arancione per registrare subito l'uscita.
+        </p>
+
+        <div class="search-input-wrapper" style="margin-bottom: 14px;">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input type="text" id="quickExitSearch" class="search-input" style="width: 100%;" placeholder="Filtra presenti per nome, cognome o qualifica..." oninput="renderQuickExitList()">
+        </div>
+
+        <div id="quickExitList" class="present-visitors-list"></div>
+
+        <div id="quickExitEmptyState" class="empty-state" style="display:none; padding:30px 10px;">
+          <div class="empty-state-icon" aria-hidden="true">✅</div>
+          <h4>Nessuna persona attualmente presente nell'edificio</h4>
+          <p>Tutti i visitatori registrati sono già usciti regolarmente.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalQuickExit')">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 4: BACKUP & RIPRISTINO DATI
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalBackup" role="dialog" aria-modal="true" aria-labelledby="modalBackupTitle">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modalBackupTitle">⚙️ Gestione Dati e Backup</h3>
+        <button type="button" class="modal-close-btn" onclick="closeModal('modalBackup')" aria-label="Chiudi">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div style="background:#f0fdf4; padding:16px; border-radius:10px; border:1.5px solid #86efac;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+              <div>
+                <h4 style="color:#166534; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                  <span>🔎</span> Ricerca e Richiamo Automatico Visitatori Registrati
+                </h4>
+                <p style="font-size:0.85rem; color:#374151; margin-bottom:0; line-height:1.4;">
+                  Consente all'operatore di velocizzare la registrazione richiamando i dati anagrafici di persone già registrate in precedenza.
+                </p>
+              </div>
+              <label class="switch-toggle" style="flex-shrink:0; margin-top:2px;" title="Attiva/Disattiva ricerca visitatori">
+                <input type="checkbox" id="chkEnableVisitorSearch" onchange="toggleVisitorSearchSetting(this.checked)">
+                <span class="slider-toggle"></span>
+              </label>
+            </div>
+            <div id="visitorSearchStatusNotice" style="font-size:0.8rem; margin-top:10px; font-weight:600; color:#15803d;">
+              Stato: Disattivato
+            </div>
+          </div>
+
+          <div style="background:#f7fafc; padding:16px; border-radius:10px; border:1px solid #e2e8f0;">
+            <h4 style="color:var(--primary); margin-bottom:6px;">📥 Esportazione Dati (Archivio IndexedDB)</h4>
+            <p style="font-size:0.85rem; color:#4a5568; margin-bottom:12px;">Salva una copia completa dello storico su file locale JSON oppure esporta la giornata selezionata in Excel (CSV).</p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button type="button" class="btn-action btn-action-primary" onclick="exportDataJSON()">Scarica Backup JSON Completo</button>
+              <button type="button" class="btn-action btn-action-secondary" onclick="exportDataCSV()">Esporta Giorno Excel (CSV)</button>
+            </div>
+          </div>
+
+          <div style="background:#f7fafc; padding:16px; border-radius:10px; border:1px solid #e2e8f0;">
+            <h4 style="color:var(--primary); margin-bottom:6px;">📤 Ripristino Dati da File</h4>
+            <p style="font-size:0.85rem; color:#4a5568; margin-bottom:12px;">Carica un file JSON precedentemente salvato (compatibile anche con i backup della versione precedente).</p>
+            <input type="file" id="importFileInput" accept=".json" style="font-size:0.85rem;" onchange="importDataJSON(event)">
+          </div>
+
+          <div style="background:#fff5f5; padding:16px; border-radius:10px; border:1px solid #feb2b2;">
+            <h4 style="color:var(--danger); margin-bottom:6px;">⚠️ Reset / Cancellazione Dati</h4>
+            <p style="font-size:0.85rem; color:#742a2a; margin-bottom:12px;">Cancella i record della data selezionata o azzera l'intero database locale e la configurazione scuola.</p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button type="button" class="btn-action btn-action-danger" onclick="confirmResetDailyRegister()">Azzera Giorno Selezionato</button>
+              <button type="button" class="btn-action btn-action-danger" style="background:#e53e3e; color:#fff;" onclick="confirmFullWipe()">Azzera Tutto e Riavvia Wizard</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalBackup')">Chiudi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 5: INSERIMENTO PIN PERSONALE SCOLASTICO
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalPinPrompt" style="z-index: 2500;" role="dialog" aria-modal="true" aria-labelledby="modalPinTitle">
+    <div class="modal-dialog" style="max-width: 420px; text-align: center;">
+      <div class="modal-header">
+        <h3 id="modalPinTitle" style="margin: 0 auto; display: flex; align-items: center; gap: 8px;">
+          🔒 Accesso Riservato Personale
+        </h3>
+        <button type="button" class="modal-close-btn" onclick="closeModal('modalPinPrompt')" aria-label="Chiudi">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 24px 20px;">
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 8px;">
+          Digita il PIN operatore per accedere:
+        </p>
+
+        <div class="pin-display-wrapper" id="pinDisplayCircles">
+          <div class="pin-circle" id="pinDot0"></div>
+          <div class="pin-circle" id="pinDot1"></div>
+          <div class="pin-circle" id="pinDot2"></div>
+          <div class="pin-circle" id="pinDot3"></div>
+        </div>
+
+        <input type="password" id="pinHiddenInput" maxlength="6" style="position: absolute; opacity: 0; pointer-events: none;" autocomplete="off" aria-hidden="true">
+
+        <div class="numpad-grid">
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('1')">1</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('2')">2</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('3')">3</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('4')">4</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('5')">5</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('6')">6</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('7')">7</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('8')">8</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('9')">9</button>
+          <button type="button" class="btn-numpad action-del" onclick="pressNumpadBack()" title="Cancella">⌫</button>
+          <button type="button" class="btn-numpad" onclick="pressNumpadDigit('0')">0</button>
+          <button type="button" class="btn-numpad action-ok" onclick="submitPinCode()" title="Sblocca">🔓</button>
+        </div>
+
+        <div style="font-size: 0.82rem; color: #a0aec0; margin-top: 10px;">
+          PIN iniziale predefinito: <strong style="color: var(--primary);">1234</strong>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: center;">
+        <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalPinPrompt')">
+          Annulla
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 6: MODIFICA PIN DI SICUREZZA
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalChangePin" style="z-index: 2600;" role="dialog" aria-modal="true" aria-labelledby="modalChangePinTitle">
+    <div class="modal-dialog" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 id="modalChangePinTitle">🔑 Modifica PIN Personale Scolastico</h3>
+        <button type="button" class="modal-close-btn" onclick="closeModal('modalChangePin')" aria-label="Chiudi">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="formChangePin" onsubmit="saveNewPin(event)">
+          <div class="form-grid">
+            <div class="form-group form-group-full">
+              <label for="pinOldInput">PIN Attuale <span class="required">*</span></label>
+              <input type="password" id="pinOldInput" class="form-control" inputmode="numeric" required maxlength="6" placeholder="Es. 1234">
+            </div>
+
+            <div class="form-group form-group-full">
+              <label for="pinNewInput">Nuovo PIN (4-6 cifre) <span class="required">*</span></label>
+              <input type="password" id="pinNewInput" class="form-control" inputmode="numeric" required maxlength="6" placeholder="Es. 5678">
+            </div>
+
+            <div class="form-group form-group-full">
+              <label for="pinConfirmInput">Conferma Nuovo PIN <span class="required">*</span></label>
+              <input type="password" id="pinConfirmInput" class="form-control" inputmode="numeric" required maxlength="6" placeholder="Ripeti nuovo PIN">
+            </div>
+          </div>
+
+          <div class="modal-footer" style="padding-left:0; padding-right:0; margin-top:20px; border-bottom:0;">
+            <button type="button" class="btn-action btn-action-secondary" onclick="closeModal('modalChangePin')">Annulla</button>
+            <button type="submit" class="btn-action btn-action-primary">💾 Salva Nuovo PIN</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL 7: ISTRUZIONI INSTALLAZIONE PWA PER iOS / iPadOS
+       ========================================================================== -->
+  <div class="modal-overlay" id="modalIosInstall" style="z-index: 2700;" role="dialog" aria-modal="true" aria-labelledby="modalIosInstallTitle">
+    <div class="modal-dialog" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 id="modalIosInstallTitle">📲 Installa su iPad / iPhone</h3>
+        <button type="button" class="modal-close-btn" onclick="closeModal('modalIosInstall')" aria-label="Chiudi">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <p style="font-size: 0.92rem; color: var(--text-muted);">
+          Su Safari per iPadOS / iOS l'installazione avviene dal menu di sistema in 3 rapidi passaggi:
+        </p>
+        <div class="ios-steps-list">
+          <div class="ios-step-item">
+            <span class="ios-step-num">1</span>
+            <span>Tocca l'icona <strong>Condividi</strong> (quadrato con freccia verso l'alto <strong>⎋</strong>) nella barra di Safari.</span>
+          </div>
+          <div class="ios-step-item">
+            <span class="ios-step-num">2</span>
+            <span>Scorri verso il basso e seleziona <strong>"Aggiungi a schermata Home"</strong>.</span>
+          </div>
+          <div class="ios-step-item">
+            <span class="ios-step-num">3</span>
+            <span>Conferma toccando <strong>"Aggiungi"</strong> in alto a destra. L'app si avvierà a schermo intero come un vero chiosco!</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-action btn-action-primary" onclick="closeModal('modalIosInstall')">Ho capito</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       CONTAINER STAMPA 1: MODULO ALUNNI (A4 VERTICALE)
+       ========================================================================== -->
+  <div id="print-module-container" class="print-only-container">
+    <div class="container">
+      <div class="header" id="p-print-school-header">
+        Al Dirigente Scolastico<br>
+        <b id="p-print-school-name">Istituto Istruzione Superiore</b><br>
+        <div id="p-print-school-branches-list"></div>
+      </div>
+
+      <div class="row">
+        Il/La sottoscritto/a <span class="field-line" style="width: 320px;" id="p-genitore"></span>
+        nato/a a <span class="field-line" style="width: 140px;" id="p-luogo"></span> il <span class="field-line" style="width: 80px;" id="p-data-nascita"></span>
+      </div>
+
+      <div class="row">
+        In qualità di padre/madre/delegato dell'alunno/a <span class="field-line" style="width: 280px;" id="p-alunno"></span>
+        frequentante, per il corrente anno scolastico, la classe <span class="field-line" style="width: 40px;" id="p-classe"></span> sez. <span class="field-line" style="width: 40px;" id="p-sezione"></span> del:
+      </div>
+
+      <div class="checkbox-group" id="p-school-checkboxes-container"></div>
+
+      <div class="title">CHIEDE</div>
+
+      <div class="row">
+        alla S.V. di voler fare:
+        &nbsp;&nbsp;<b>[ <span id="p-tipo-azione-entra"> </span> ] ENTRARE</b> il/la proprio/a figlio/a alle ore <span class="field-line" style="width: 60px;" id="p-orario-entra"></span>
+        &nbsp;&nbsp;<b>[ <span id="p-tipo-azione-esce"> </span> ] USCIRE</b> il/la proprio/a figlio/a alle ore <span class="field-line" style="width: 60px;" id="p-orario-esce"></span>
+      </div>
+
+      <div class="row">
+        per la seguente motivazione:
+        <div class="box-motivazione" id="p-motivazione"></div>
+      </div>
+
+      <div class="row" style="font-size: 12px; margin-top: 15px; border-top: 1px dashed #666; padding-top: 5px;">
+        <b>Estremi Documento d'Identità (Richiesto per ingressi/uscite):</b><br>
+        Tipo: <span class="field-line" style="width: 120px;" id="p-doc-tipo"></span>
+        Numero: <span class="field-line" style="width: 120px;" id="p-doc-num"></span>
+        Ente: <span class="field-line" style="width: 150px;" id="p-doc-ente"></span><br>
+        Rilasciato il: <span class="field-line" style="width: 90px;" id="p-doc-ril"></span>
+        Scadenza: <span class="field-line" style="width: 90px;" id="p-doc-scad"></span>
+      </div>
+
+      <div class="row" style="margin-top: 15px;">
+        Si allega copia di un documento di riconoscimento in corso di validità.
+      </div>
+
+      <div class="footer-section">
+        <div>
+          Data <span class="field-line" style="width: 100px;" id="p-data-odierna"></span>
+        </div>
+        <div class="signature-box">
+          In fede<br>
+          <img id="p-firma" class="signature-img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='30'%3E%3C/svg%3E" alt="Firma Digitale">
+        </div>
+      </div>
+    </div>
+
+    <div class="no-print" style="text-align: center; margin-top: 20px;">
+      <button type="button" onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer; background: #0056b3; color: #fff; border: none; border-radius: 5px;">🖨️ Stampa Modulo</button>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       CONTAINER STAMPA 2: REGISTRO GIORNALIERO (A4 ORIZZONTALE)
+       ========================================================================== -->
+  <div id="print-register-container" class="print-only-container">
+    <div class="print-register-header">
+      <h2 id="p-reg-school-title">REGISTRO GIORNALIERO ACCESSI PORTINERIA</h2>
+      <h3>REGISTRO GIORNALIERO ACCESSI &bull; DATA: <span id="p-reg-data"></span></h3>
+    </div>
+
+    <table class="print-register-table">
+      <thead>
+        <tr>
+          <th style="width: 11%;">Data e ora</th>
+          <th style="width: 11%;">Cognome</th>
+          <th style="width: 10%;">Nome</th>
+          <th style="width: 11%;">N. cellulare</th>
+          <th style="width: 9%;">Qualifica</th>
+          <th style="width: 15%;">Motivazione</th>
+          <th style="width: 10%; text-align:center;">Firma</th>
+          <th style="width: 7%;">Uscita</th>
+          <th style="width: 8%;">Modulo di autorizzazione</th>
+          <th style="width: 8%; text-align:center;">Firma coll. scolastico</th>
+        </tr>
+      </thead>
+      <tbody id="printRegisterTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+</body>
+</html>
