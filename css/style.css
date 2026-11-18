@@ -1749,23 +1749,24 @@ label {
 
 #print-module-container {
   font-family: 'Times New Roman', Times, serif, Arial, sans-serif;
-  font-size: 14px;
+  font-size: 12.5px;
   color: #000;
-  line-height: 1.4;
+  line-height: 1.32;
   background: #fff;
 }
 
 #print-module-container .container {
-  max-width: 700px;
+  max-width: 720px;
   margin: 0 auto;
   border: 1px solid #ccc;
-  padding: 30px;
+  padding: 20px;
 }
 
 #print-module-container .header {
   text-align: right;
-  font-size: 13px;
-  margin-bottom: 25px;
+  font-size: 11.5px;
+  margin-bottom: 12px;
+  line-height: 1.25;
 }
 
 #print-module-container .header b {
@@ -1775,51 +1776,61 @@ label {
 #print-module-container .title {
   text-align: center;
   font-weight: bold;
-  font-size: 15px;
-  margin-bottom: 20px;
+  font-size: 13.5px;
+  margin: 10px 0;
   text-transform: uppercase;
 }
 
 #print-module-container .field-line {
   border-bottom: 1px dotted #000;
   display: inline-block;
-  min-height: 18px;
-  padding: 0 5px;
+  min-height: 16px;
+  padding: 0 4px;
 }
 
 #print-module-container .row {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 #print-module-container .checkbox-group {
-  margin: 10px 0 10px 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px 14px;
+  margin: 6px 0 8px 8px;
+  font-size: 12px;
 }
 
 #print-module-container .checkbox-item {
-  margin-bottom: 5px;
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 #print-module-container .box-motivazione {
   border: 1px solid #000;
-  padding: 10px;
-  min-height: 50px;
-  margin-top: 5px;
+  padding: 6px 8px;
+  min-height: 32px;
+  margin-top: 4px;
 }
 
 #print-module-container .footer-section {
-  margin-top: 40px;
+  margin-top: 16px;
   display: flex;
   justify-content: space-between;
+  align-items: flex-end;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 #print-module-container .signature-box {
   text-align: center;
-  width: 250px;
+  width: 220px;
 }
 
 #print-module-container .signature-img {
-  max-width: 200px;
-  max-height: 60px;
+  max-width: 170px;
+  max-height: 44px;
   display: block;
   margin: 0 auto;
 }
@@ -1833,53 +1844,72 @@ label {
 
 .print-register-header {
   text-align: center;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
   border-bottom: 2px solid #000;
-  padding-bottom: 8px;
+  padding-bottom: 5px;
 }
 
 .print-register-header h2 {
-  font-size: 15pt;
+  font-size: 13pt;
   font-weight: bold;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .print-register-header h3 {
-  font-size: 12pt;
+  font-size: 10.5pt;
   font-weight: normal;
 }
 
 .print-register-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
-  font-size: 9.5pt;
+  font-size: 8.5pt;
+}
+
+.print-register-table thead {
+  display: table-header-group;
+}
+
+.print-register-table tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .print-register-table th,
 .print-register-table td {
   border: 1px solid #000;
-  padding: 6px 8px;
+  padding: 4px 5px;
   text-align: left;
   vertical-align: middle;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
 }
 
 .print-register-table th {
   background: #e2e8f0 !important;
   font-weight: bold;
-  font-size: 9pt;
+  font-size: 8pt;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
 }
 
 .print-register-table td img {
-  max-height: 35px;
-  max-width: 90px;
+  max-height: 28px;
+  max-width: 75px;
   display: block;
   margin: 0 auto;
 }
 
 @media print {
+  html,
   body {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    display: block !important;
+    overflow: visible !important;
     background: #fff !important;
     padding: 0 !important;
     margin: 0 !important;
@@ -1900,23 +1930,34 @@ label {
   }
   body.print-mode-module #print-module-container {
     display: block !important;
+    width: 100% !important;
     padding: 0 !important;
+    margin: 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
   }
   body.print-mode-module #print-module-container .container {
     border: none !important;
     padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
     max-width: 100% !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    page-break-after: avoid !important;
   }
 
   body.print-mode-register #print-register-container {
     display: block !important;
     width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 }
 
 @page {
-  size: auto;
-  margin: 10mm;
+  margin: 8mm;
 }
 
 @media (max-width: 768px) {

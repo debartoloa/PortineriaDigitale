@@ -2,6 +2,18 @@
 
 Tutte le modifiche rilevanti a **Portineria Digitale Scolastica** sono documentate in questo file secondo il formato [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.1.1] - 2026-11-18
+
+### Fixed
+- **Stampa su 1 singola pagina e cambio orientamento (`css/style.css`, `index.html`, `js/app.js`)**:
+  - Azzerati `min-height: 100vh` e `display: flex` su `html, body` in `@media print`, eliminando la 2ª pagina bianca generata sui driver di stampa.
+  - Sostituito il `setTimeout(..., 1000)` con `afterprint` (`triggerBrowserPrint`) per mantenere integro il layout di stampa anche durante il cambio orientamento nell'anteprima del browser.
+  - Compattato il Modulo Autorizzazione Alunni (checkbox sedi su griglia a 2 colonne, intestazione indirizzi su riga compatta, `break-inside: avoid`) per rientrare su una sola pagina A4 sia in verticale che in orizzontale.
+  - Aggiunti `table-layout: fixed`, `overflow-wrap: break-word`, `thead { display: table-header-group; }` e `break-inside: avoid` sulle righe della tabella del Registro Giornaliero.
+
+### Changed
+- **Service Worker (`sw.js`)**: incrementata la versione cache a `v1.1.1`.
+
 ## [1.1.0] - 2026-11-18
 
 ### Added

@@ -435,8 +435,8 @@ function applySchoolConfig() {
   const printBranchesList = document.getElementById('p-print-school-branches-list');
   if (printBranchesList) {
     printBranchesList.innerHTML = (schoolConfig.indirizzi || [])
-      .map((ind) => `• ${escapeHtml(ind)}<br>`)
-      .join('');
+      .map((ind) => escapeHtml(ind))
+      .join(' &bull; ');
   }
 
   const printChkContainer = document.getElementById('p-school-checkboxes-container');
@@ -1948,6 +1948,8 @@ async function registerExitAndRefresh(recordId) {
 /* ==========================================================================
    13. STAMPA MODULO A4 VERTICALE & REGISTRO A4 ORIZZONTALE
    ========================================================================== */
+let activePrintCleanup = null;
+
 function setPrintOrientation(orientation, margin) {
   let styleEl = document.getElementById('dynamic-print-page-style');
   if (!styleEl) {
@@ -1958,11 +1960,33 @@ function setPrintOrientation(orientation, margin) {
   styleEl.textContent = `@page { size: A4 ${orientation}; margin: ${margin}; }`;
 }
 
+function triggerBrowserPrint(modeClass, orientation, margin) {
+  setPrintOrientation(orientation, margin);
+
+  if (activePrintCleanup) {
+    window.removeEventListener('afterprint', activePrintCleanup);
+    activePrintCleanup = null;
+  }
+
+  document.body.classList.remove('print-mode-module', 'print-mode-register');
+  document.body.classList.add(modeClass);
+
+  activePrintCleanup = () => {
+    document.body.classList.remove('print-mode-module', 'print-mode-register');
+    activePrintCleanup = null;
+  };
+  window.addEventListener('afterprint', activePrintCleanup, { once: true });
+
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      window.print();
+    }, 150);
+  });
+}
+
 function populateOfficialPrintModule(record) {
   const data = record.studentData;
   if (!data) return;
-
-  setPrintOrientation('portrait', '15mm');
 
   document.getElementById('p-genitore').textContent = data.genitore || `${record.cognome} ${record.nome}`;
   document.getElementById('p-luogo').textContent = data.luogoNascita || '';
@@ -1993,13 +2017,7 @@ function populateOfficialPrintModule(record) {
   const imgFirma = document.getElementById('p-firma');
   if (record.firmaBase64) imgFirma.src = record.firmaBase64;
 
-  document.body.classList.remove('print-mode-register');
-  document.body.classList.add('print-mode-module');
-
-  setTimeout(() => {
-    window.print();
-    setTimeout(() => document.body.classList.remove('print-mode-module'), 1000);
-  }, 250);
+  triggerBrowserPrint('print-mode-module', 'portrait', '10mm');
 }
 
 function reprintStudentModule(recordId) {
@@ -2019,8 +2037,6 @@ function printDailyRegister() {
     showToast('Nessun accesso presente per la data selezionata da stampare.', 'info');
     return;
   }
-
-  setPrintOrientation('landscape', '10mm');
 
   const dObj = new Date(`${targetDate}T12:00:00`);
   document.getElementById('p-reg-data').textContent = dObj.toLocaleDateString('it-IT', {
@@ -2052,18 +2068,12 @@ function printDailyRegister() {
       <td style="text-align:center;">${signatureImg}</td>
       <td><strong>${escapeHtml(uscita)}</strong></td>
       <td style="text-align:center;">${modulo}</td>
-      <td style="text-align:center; height:36px;"></td>
+      <td style="text-align:center; height:28px;"></td>
     `;
     tbody.appendChild(tr);
   });
 
-  document.body.classList.remove('print-mode-module');
-  document.body.classList.add('print-mode-register');
-
-  setTimeout(() => {
-    window.print();
-    setTimeout(() => document.body.classList.remove('print-mode-register'), 1000);
-  }, 250);
+  triggerBrowserPrint('print-mode-register', 'landscape', '8mm');
 }
 
 /* ==========================================================================
