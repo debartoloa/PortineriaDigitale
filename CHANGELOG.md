@@ -2,6 +2,18 @@
 
 Tutte le modifiche rilevanti a **Portineria Digitale Scolastica** sono documentate in questo file secondo il formato [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.1.0] - 2026-11-18
+
+### Added
+- **Binarizzazione Adattiva Locale (Bradley-Roth) & Sharpening (`js/api.js`)**: pipeline di pre-elaborazione con *Integral Image* $O(1)$ e filtro *Unsharp Mask* 3×3 per contrastare ombre oblique e filigrane della CIE.
+- **Ritaglio per Zone (ROI) & Whitelist/PSM Dinamici (`recognizeDocumentCanvas`)**:
+  - Modalità **Fronte**: ROI dedicata al Numero Documento (`PSM 7`, whitelist `A-Z0-9`), ROI anagrafica destra (`PSM 6`, esclusione fototessera) e fallback tessera intera/MRZ automatico.
+  - Modalità **Retro MRZ**: ritaglio della sola fascia MRZ inferiore con whitelist ICAO (`A-Z0-9<`) e `PSM 6`.
+- **Validazione Matematica Check-Digit ICAO 9303 (`7-3-1`)**: funzioni `calculateMrzCheckDigit` e `repairMrzFieldWithCheckDigit` con auto-riparazione posizionale dei caratteri OCR ambigui (`0/O/Q`, `1/I/L`, `2/Z`, `5/S`, `6/G`, `8/B`) e indicatore `MRZ (Checksum ICAO OK)` nel riepilogo UI.
+
+### Changed
+- **Service Worker (`sw.js`)**: incrementata la versione cache a `v1.1.0`.
+
 ## [1.0.0] - 2026-11-14
 
 ### Added

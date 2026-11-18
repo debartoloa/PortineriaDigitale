@@ -5,12 +5,9 @@
 
 import { StorageDB, hashPin, migrateLegacyLocalStorage } from './storage.js';
 import {
-  getOcrWorker,
   setOcrStatusCallback,
   getGuideCropCoordinates,
-  preprocessCardImage,
-  parseMrzText,
-  parseDocFrontText
+  recognizeDocumentCanvas
 } from './api.js';
 
 /* ==========================================================================
@@ -1702,39 +1699,24 @@ function retakeDocPhoto() {
 
 async function processDocImageOCR(canvas) {
   const statusText = document.getElementById('cameraStatusText');
-  const optimizedCanvas = preprocessCardImage(canvas);
 
   setOcrStatusCallback((m) => {
     if (!statusText) return;
     if (m.status === 'recognizing text') {
       const pct = Math.round((m.progress || 0) * 100);
-      statusText.textContent = `🔍 Lettura ${ocrScanMode === 'mrz' ? 'zona MRZ' : 'fronte documento'}... ${pct}%`;
+      statusText.textContent = `🔍 Lettura ${ocrScanMode === 'mrz' ? 'zona MRZ' : 'zone ROI fronte'}... ${pct}%`;
     } else if (m.status === 'loading language traineddata' || m.status === 'loading tesseract core') {
       statusText.textContent = '📥 Caricamento modelli OCR in memoria...';
     }
   });
 
   try {
-    const worker = await getOcrWorker();
-    if (worker) {
-      if (statusText) statusText.textContent = '🔍 Analisi OCR con Worker dedicato...';
-      const result = await worker.recognize(optimizedCanvas);
-      const rawText = result && result.data ? result.data.text : '';
-
-      if (rawText && rawText.trim().length > 5) {
-        if (ocrScanMode === 'mrz' || rawText.includes('<<')) {
-          const mrzParsed = parseMrzText(rawText);
-          if (mrzParsed) {
-            applyExtractedDocData(mrzParsed);
-            showOcrSuccessBadge(mrzParsed, 'MRZ');
-            return;
-          }
-        }
-        const frontParsed = parseDocFrontText(rawText);
-        applyExtractedDocData(frontParsed);
-        showOcrSuccessBadge(frontParsed, 'Fronte');
-        return;
-      }
+    if (statusText) statusText.textContent = '🔍 Pre-elaborazione Bradley-Roth & analisi OCR multi-zona...';
+    const ocrOutcome = await recognizeDocumentCanvas(canvas, ocrScanMode, activeOcrTarget);
+    if (ocrOutcome && ocrOutcome.data) {
+      applyExtractedDocData(ocrOutcome.data);
+      showOcrSuccessBadge(ocrOutcome.data, ocrOutcome.sourceLabel);
+      return;
     }
   } catch (err) {
     console.warn('Errore elaborazione Tesseract Worker:', err);
@@ -1747,20 +1729,21 @@ function showOcrSuccessBadge(data, sourceLabel) {
   const statusText = document.getElementById('cameraStatusText');
   const badge = document.getElementById('docCapturedBadge');
   const summary = document.getElementById('docCapturedSummary');
+  const label = (data && data.mrzVerified) ? 'MRZ (Checksum ICAO OK)' : sourceLabel;
 
-  if (statusText) statusText.textContent = `✅ Analisi ${sourceLabel} completata con successo!`;
+  if (statusText) statusText.textContent = `✅ Analisi ${label} completata con successo!`;
   if (badge) badge.style.display = 'flex';
   if (summary) {
     if (activeOcrTarget === 'visitor') {
-      summary.textContent = `${sourceLabel} analizzato (solo Cognome e Nome): ${data.cognome ? data.cognome + ' ' + data.nome : 'verifica i campi qui sotto'}.`;
+      summary.textContent = `${label} analizzato (solo Cognome e Nome): ${data.cognome ? data.cognome + ' ' + data.nome : 'verifica i campi qui sotto'}.`;
     } else {
-      summary.textContent = `${sourceLabel} analizzato: ${data.cognome ? data.cognome + ' ' + data.nome : 'dati estratti'}. Verifica o ritocca all'occorrenza.`;
+      summary.textContent = `${label} analizzato: ${data.cognome ? data.cognome + ' ' + data.nome : 'dati estratti'}. Verifica o ritocca all'occorrenza.`;
     }
   }
   showToast(
     activeOcrTarget === 'visitor'
-      ? `✅ Cognome e Nome (${sourceLabel}) estratti!`
-      : `✅ Dati documento (${sourceLabel}) estratti con successo!`,
+      ? `✅ Cognome e Nome (${label}) estratti!`
+      : `✅ Dati documento (${label}) estratti con successo!`,
     'success'
   );
 }
