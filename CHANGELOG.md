@@ -2,6 +2,14 @@
 
 Tutte le modifiche rilevanti a **Portineria Digitale Scolastica** sono documentate in questo file secondo il formato [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.2.1] - 2026-11-20
+
+### Added
+- **Indicatore Versione in UI (`index.html`, `css/style.css`, `js/app.js`)**: aggiunto badge versione (`v1.2.1`) visibile sia nell'header della Dashboard che nella schermata Wizard iniziale, sincronizzato con la costante `APP_VERSION`.
+
+### Changed
+- **Service Worker (`sw.js`)**: incrementata la versione cache a `v1.2.1`.
+
 ## [1.2.0] - 2026-11-20
 
 ### Changed

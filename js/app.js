@@ -13,6 +13,7 @@ import {
 /* ==========================================================================
    STATO GLOBALE APPLICATIVO
    ========================================================================== */
+const APP_VERSION = 'v1.2.1';
 let records = [];
 let mediaStream = null;
 let currentStudentAction = 'ENTRARE';
@@ -70,6 +71,11 @@ async function verifyPin(inputPin) {
    2. PWA: SERVICE WORKER, INSTALLAZIONE E STATO CONNESSIONE
    ========================================================================== */
 function initPWA() {
+  ['appVersionBadge', 'wizardVersionBadge'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = APP_VERSION;
+  });
+
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch((err) => {
       console.warn('Registrazione Service Worker non riuscita:', err);

@@ -206,6 +206,20 @@ label {
   white-space: nowrap;
 }
 
+.version-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(15, 23, 42, 0.35);
+  color: #fbd38d;
+  white-space: nowrap;
+}
+
 .connection-status-pill .status-dot {
   width: 8px;
   height: 8px;
