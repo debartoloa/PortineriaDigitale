@@ -35,7 +35,7 @@
         <h2 id="wizardTitle">Benvenuto in Portineria Digitale!</h2>
         <p id="wizardSubtitle">Per iniziare, inserisci il nome del tuo Istituto Scolastico e gli indirizzi di studio o plessi presenti.</p>
         <div style="margin-top: 10px;">
-          <span id="wizardVersionBadge" class="version-pill">v1.3.0</span>
+          <span id="wizardVersionBadge" class="version-pill">v2.0.0</span>
         </div>
       </div>
 
@@ -124,7 +124,7 @@
             <span id="connectionStatusText">Online</span>
           </div>
 
-          <span id="appVersionBadge" class="version-pill" title="Versione applicazione">v1.3.0</span>
+          <span id="appVersionBadge" class="version-pill" title="Versione applicazione">v2.0.0</span>
 
           <!-- Pulsante Installazione PWA -->
           <button type="button" class="btn-header-tool btn-install-pwa" id="btnInstallApp" onclick="handleInstallClick()" style="display: none;" title="Installa l'app sul dispositivo per uso Kiosk a schermo intero">
@@ -453,10 +453,35 @@
               </div>
             </div>
 
+            <div class="ocr-engine-bar">
+              <div class="ocr-engine-selector">
+                <span style="font-size: 0.78rem; font-weight: 700; color: #cbd5e1;">⚙️ Motore OCR:</span>
+                <div class="ocr-mode-pills" id="ocrEngineToggle">
+                  <button type="button" class="btn-engine-flag active" id="btnEngineTesseract" onclick="setOcrEngineMode('tesseract')">
+                    🔵 Classico (Tesseract)
+                  </button>
+                  <button type="button" class="btn-engine-flag" id="btnEnginePaddle" onclick="setOcrEngineMode('paddle')" title="PaddleOCR su ONNX Runtime Web + Quality Gate Live + OCR-B MRZ">
+                    🚀 AI Pro (PaddleOCR)
+                  </button>
+                </div>
+              </div>
+              <div class="ai-pro-options" id="aiProOptionsBar" style="display: none;">
+                <label class="ai-pro-chk" title="Analizza i frame video in tempo reale e scatta automaticamente appena nitido">
+                  <input type="checkbox" id="chkAutoCapture" checked onchange="toggleAutoCaptureSetting(this.checked)">
+                  <span>⚡ Auto-Scatto Live</span>
+                </label>
+                <label class="ai-pro-chk" title="Carica OpenCV.js WASM on-demand per raddrizzare prospetticamente la tessera">
+                  <input type="checkbox" id="chkOpenCvWarp" onchange="toggleOpenCvWarpSetting(this.checked)">
+                  <span>📐 Raddrizza OpenCV</span>
+                </label>
+              </div>
+            </div>
+
             <div class="camera-viewport-wrapper" id="cameraViewportWrapper">
               <video id="cameraVideo" playsinline autoplay muted></video>
               <canvas id="cameraScanCanvas" style="display:none;"></canvas>
               <img id="capturedDocPreview" alt="Foto Documento Acquisito">
+              <div id="qualityGateBadge" class="quality-gate-badge" style="display: none;"></div>
 
               <div class="camera-placeholder" id="cameraPlaceholder">
                 <span style="font-size: 42px;">🪪</span>

@@ -2,6 +2,17 @@
 
 Tutte le modifiche rilevanti a **Portineria Digitale Scolastica** sono documentate in questo file secondo il formato [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il [Semantic Versioning](https://semver.org/lang/it/).
 
+## [2.0.0] - 2026-11-20
+
+### Added
+- **Architettura Dual-Engine OCR con Flag Selettore (`js/ocr_nextgen.js`, `index.html`, `js/app.js`)**:
+  - Selettore persistente tra **🔵 Classico (Tesseract)** e **🚀 AI Pro (PaddleOCR)** direttamente nell'interfaccia fotocamera.
+  - **PaddleOCR su ONNX Runtime Web (100% client-side, zero build step)**: DBNet (`PP-OCRv4_det`) + Riconoscimento Latino/Italiano (`latin PP-OCRv5_rec`) via `esearch-ocr` + `onnxruntime-web`.
+  - **MRZ Dedicato OCR-B**: worker dedicato con `OCRB.traineddata.gz` (77 KB) + fallback PaddleOCR e validazione matematica ICAO 9303 (`7-3-1`).
+  - **Quality Gate Live & Auto-Scatto Continuo**: analisi frame video in tempo reale (Varianza del Laplaciano 3×3 per nitidezza e rilevamento riflessi/glare) con cattura automatica, bip sonoro e vibrazione.
+  - **Raddrizzamento Prospettico Opzionale con OpenCV.js WASM**: toggle dedicato per rilevare i 4 angoli della tessera ID-1 e applicare `warpPerspective`.
+- **Service Worker (`sw.js`)**: cache aggiornata a `v2.0.0` con precaching di `js/ocr_nextgen.js` e caching persistente per modelli ONNX, OpenCV e OCR-B.
+
 ## [1.3.0] - 2026-11-20
 
 ### Fixed & Improved

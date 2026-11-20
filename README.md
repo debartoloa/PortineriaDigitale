@@ -29,9 +29,10 @@ L'applicazione opera interamente lato client (senza server esterni né database 
   - **Scansione Documento opzionale (solo Cognome e Nome)**: pulsante *"📸 Scansiona Documento"* per compilare automaticamente `Cognome` e `Nome` tramite OCR (Fronte CIE/Patente o Retro MRZ) senza acquisire altri dati non necessari.
 - **Gestione Alunni (Ingresso posticipato / Uscita anticipata)**:
   - Acquisizione documento d'identità (CIE, Patente, Carta Cartacea, Passaporto) via fotocamera con **cornice guida calibrabile** (`65%–135%`) o upload file.
-  - Motore OCR client-side con **singolo Worker `Tesseract.createWorker('ita')` riutilizzabile**, pre-elaborazione contrasto/binarizzazione e doppia modalità:
-    - **🪪 Fronte Documento**: estrae Cognome, Nome, Numero Documento e Date.
-    - **📟 Retro MRZ (CIE / Passaporto)**: parser dedicato per codici MRZ (`TD1` 3×30 e `TD3` 2×44) per la massima precisione.
+  - Motore OCR **Dual-Engine** 100% client-side con flag selettore:
+    - **🔵 Classico (Tesseract.js)**: Worker `ita` riutilizzabile, scala di grigi morbida anti-ciano, estrazione layout Full-Card e validazione ICAO `7-3-1`.
+    - **🚀 AI Pro (PaddleOCR ONNX)**: DBNet + SVTR Latin su `onnxruntime-web`, MRZ dedicato con modello `OCR-B` (77 KB), **Quality Gate live** su flusso video con auto-scatto e **raddrizzamento prospettico opzionale OpenCV.js WASM**.
+    - Doppia modalità: **🪪 Fronte Documento** e **📟 Retro MRZ (CIE / Passaporto `TD1`/`TD3`)**.
   - Barra di rifinitura rapida con sincronizzazione bidirezionale e **Piano B** per inserimento manuale immediato.
   - Stampa automatica del **modulo ufficiale A4 verticale** indirizzato al Dirigente Scolastico con firma digitale inclusa.
 - **Registrazione Uscita Rapida**:
@@ -57,7 +58,8 @@ PortineriaDigitale/
 │   └── style.css               # Stili modulari, accessibilità kiosk e stampa A4
 ├── js/
 │   ├── app.js                  # Modulo principale UI, PWA, flussi Kiosk e stampa
-│   ├── api.js                  # Motore OCR (Tesseract Worker, preprocessing, Fronte + MRZ)
+│   ├── api.js                  # Motore OCR Classico (Tesseract Worker, parsing Fronte + MRZ)
+│   ├── ocr_nextgen.js          # Motore OCR AI Pro (PaddleOCR ONNX, OCR-B MRZ, Quality Gate, OpenCV)
 │   └── storage.js              # Wrapper IndexedDB + fallback localStorage + PIN SHA-256
 ├── assets/
 │   ├── icons/

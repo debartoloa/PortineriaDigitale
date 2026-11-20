@@ -9,11 +9,15 @@ import {
   getGuideCropCoordinates,
   recognizeDocumentCanvas
 } from './api.js';
+import {
+  recognizeWithNextGen,
+  evaluateFrameQuality
+} from './ocr_nextgen.js';
 
 /* ==========================================================================
    STATO GLOBALE APPLICATIVO
    ========================================================================== */
-const APP_VERSION = 'v1.3.0';
+const APP_VERSION = 'v2.0.0';
 let records = [];
 let mediaStream = null;
 let currentStudentAction = 'ENTRARE';
@@ -21,6 +25,14 @@ let guideCurrentScale = 1.0;
 let currentCameraFacing = 'environment';
 let ocrScanMode = 'front'; // 'front' | 'mrz'
 let activeOcrTarget = 'student'; // 'student' | 'visitor'
+
+// Flag Motore OCR Dual-Engine & Quality Gate Live
+let ocrEngineMode = 'tesseract'; // 'tesseract' | 'paddle'
+let autoCaptureEnabled = true;
+let openCvWarpEnabled = false;
+let liveQualityIntervalId = null;
+let consecutiveGoodFrames = 0;
+let isAutoOcrRunning = false;
 
 // Stato sicurezza PIN & Modalità Staff
 let isOperatorUnlocked = false;
@@ -210,6 +222,12 @@ async function initApp() {
   }
 
   visitorSearchEnabled = Boolean(await StorageDB.getSetting('visitorSearchEnabled', false));
+  const savedEngine = await StorageDB.getSetting('ocrEngineMode', 'tesseract');
+  ocrEngineMode = savedEngine === 'paddle' ? 'paddle' : 'tesseract';
+  autoCaptureEnabled = Boolean(await StorageDB.getSetting('autoCaptureEnabled', true));
+  openCvWarpEnabled = Boolean(await StorageDB.getSetting('openCvWarpEnabled', false));
+  updateOcrEngineUI();
+
   const savedSchool = await StorageDB.getSetting('schoolConfig', null);
   if (savedSchool) schoolConfig = savedSchool;
 
@@ -1476,6 +1494,163 @@ function setOcrScanMode(mode) {
   }
 }
 
+async function setOcrEngineMode(mode) {
+  ocrEngineMode = mode === 'paddle' ? 'paddle' : 'tesseract';
+  await StorageDB.setSetting('ocrEngineMode', ocrEngineMode);
+  updateOcrEngineUI();
+
+  if (mediaStream) {
+    if (ocrEngineMode === 'paddle') {
+      startLiveQualityLoop();
+    } else {
+      stopLiveQualityLoop();
+    }
+  }
+
+  showToast(
+    ocrEngineMode === 'paddle'
+      ? '🚀 Motore AI Pro (PaddleOCR ONNX + Quality Gate Live) attivato!'
+      : '🔵 Motore Classico (Tesseract.js) attivato!',
+    'info'
+  );
+}
+
+async function toggleAutoCaptureSetting(enabled) {
+  autoCaptureEnabled = Boolean(enabled);
+  await StorageDB.setSetting('autoCaptureEnabled', autoCaptureEnabled);
+}
+
+async function toggleOpenCvWarpSetting(enabled) {
+  openCvWarpEnabled = Boolean(enabled);
+  await StorageDB.setSetting('openCvWarpEnabled', openCvWarpEnabled);
+}
+
+function updateOcrEngineUI() {
+  const btnTess = document.getElementById('btnEngineTesseract');
+  const btnPaddle = document.getElementById('btnEnginePaddle');
+  const aiBar = document.getElementById('aiProOptionsBar');
+  const chkAuto = document.getElementById('chkAutoCapture');
+  const chkCv = document.getElementById('chkOpenCvWarp');
+
+  if (btnTess) btnTess.classList.toggle('active', ocrEngineMode === 'tesseract');
+  if (btnPaddle) btnPaddle.classList.toggle('active', ocrEngineMode === 'paddle');
+  if (aiBar) aiBar.style.display = ocrEngineMode === 'paddle' ? 'flex' : 'none';
+  if (chkAuto) chkAuto.checked = autoCaptureEnabled;
+  if (chkCv) chkCv.checked = openCvWarpEnabled;
+}
+
+function stopLiveQualityLoop() {
+  if (liveQualityIntervalId) {
+    clearInterval(liveQualityIntervalId);
+    liveQualityIntervalId = null;
+  }
+  consecutiveGoodFrames = 0;
+  isAutoOcrRunning = false;
+  const qgBadge = document.getElementById('qualityGateBadge');
+  if (qgBadge) {
+    qgBadge.style.display = 'none';
+    qgBadge.classList.remove('qg-ok', 'qg-warn');
+  }
+}
+
+function isAutoResultValid(data) {
+  if (!data) return false;
+  if (ocrScanMode === 'mrz') {
+    return Boolean(data.mrzVerified);
+  }
+  if (activeOcrTarget === 'visitor') {
+    return Boolean(data.cognome && data.nome);
+  }
+  return Boolean(data.cognome && data.nome && (data.docNum || data.dataNascita));
+}
+
+function startLiveQualityLoop() {
+  stopLiveQualityLoop();
+  if (ocrEngineMode !== 'paddle' || !mediaStream) return;
+
+  const video = document.getElementById('cameraVideo');
+  const guide = document.getElementById('cardFrontGuide');
+  const qgBadge = document.getElementById('qualityGateBadge');
+  if (!video || !guide) return;
+
+  const sampleCanvas = document.createElement('canvas');
+
+  liveQualityIntervalId = setInterval(async () => {
+    if (!mediaStream || video.readyState < 2 || isAutoOcrRunning) return;
+
+    const crop = getGuideCropCoordinates(video, guide, 0.12);
+    sampleCanvas.width = crop.sw;
+    sampleCanvas.height = crop.sh;
+    sampleCanvas.getContext('2d').drawImage(video, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, crop.sw, crop.sh);
+
+    const q = evaluateFrameQuality(sampleCanvas);
+
+    if (qgBadge) {
+      qgBadge.style.display = 'inline-block';
+      qgBadge.classList.toggle('qg-ok', q.ok);
+      qgBadge.classList.toggle('qg-warn', !q.ok);
+      qgBadge.textContent = `${q.message} (Nitidezza: ${q.sharpness})`;
+    }
+
+    if (q.ok) {
+      consecutiveGoodFrames++;
+    } else {
+      consecutiveGoodFrames = 0;
+    }
+
+    if (autoCaptureEnabled && consecutiveGoodFrames >= 2) {
+      isAutoOcrRunning = true;
+      const statusText = document.getElementById('cameraStatusText');
+      try {
+        const outcome = await recognizeWithNextGen(sampleCanvas, {
+          mode: ocrScanMode,
+          target: activeOcrTarget,
+          useOpenCv: openCvWarpEnabled,
+          allowSecondPass: false,
+          onStatus: (msg) => {
+            if (statusText) statusText.textContent = msg;
+          }
+        });
+
+        if (outcome && outcome.debug) {
+          const debugImg = document.getElementById('ocrDebugPreviewImg');
+          const debugRaw = document.getElementById('ocrDebugRawText');
+          if (debugImg && outcome.debug.preprocessedDataUrl) debugImg.src = outcome.debug.preprocessedDataUrl;
+          if (debugRaw) debugRaw.textContent = outcome.debug.rawText || '(Nessun testo rilevato)';
+        }
+
+        if (outcome && isAutoResultValid(outcome.data)) {
+          playScannerBeep();
+          if (navigator.vibrate) navigator.vibrate(120);
+
+          const previewImg = document.getElementById('capturedDocPreview');
+          const btnsLive = document.getElementById('cameraBtnsLive');
+          const btnsReview = document.getElementById('cameraBtnsReview');
+          if (previewImg) {
+            previewImg.src = sampleCanvas.toDataURL('image/jpeg', 0.95);
+            previewImg.style.width = guide.style.width || '320px';
+            previewImg.style.height = guide.style.height || '200px';
+            previewImg.style.display = 'block';
+          }
+
+          stopCamera();
+          if (btnsLive) btnsLive.style.display = 'none';
+          if (btnsReview) btnsReview.style.display = 'flex';
+
+          applyExtractedDocData(outcome.data);
+          showOcrSuccessBadge(outcome.data, outcome.sourceLabel);
+          return;
+        }
+      } catch (err) {
+        console.warn('Errore ciclo auto-scatto AI Pro:', err);
+      } finally {
+        consecutiveGoodFrames = 0;
+        isAutoOcrRunning = false;
+      }
+    }
+  }, 380);
+}
+
 function playScannerBeep() {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -1621,6 +1796,10 @@ async function toggleCamera() {
     btnToggle.textContent = '⏹️ Chiudi Fotocamera';
     btnToggle.classList.remove('btn-action-primary');
     btnToggle.classList.add('btn-action-danger');
+
+    if (ocrEngineMode === 'paddle') {
+      startLiveQualityLoop();
+    }
   } catch (err) {
     console.warn('Accesso fotocamera non riuscito:', err);
     statusText.textContent = '⚠️ Fotocamera non disponibile. Carica una foto da file o compila a mano.';
@@ -1629,6 +1808,7 @@ async function toggleCamera() {
 }
 
 function stopCamera() {
+  stopLiveQualityLoop();
   if (mediaStream) {
     mediaStream.getTracks().forEach((track) => track.stop());
     mediaStream = null;
@@ -1730,6 +1910,7 @@ function handleDocFileUpload(e) {
     img.src = evt.target.result;
   };
   reader.readAsDataURL(file);
+  e.target.value = '';
 }
 
 function retakeDocPhoto() {
@@ -1740,19 +1921,33 @@ function retakeDocPhoto() {
 async function processDocImageOCR(canvas) {
   const statusText = document.getElementById('cameraStatusText');
 
-  setOcrStatusCallback((m) => {
-    if (!statusText) return;
-    if (m.status === 'recognizing text') {
-      const pct = Math.round((m.progress || 0) * 100);
-      statusText.textContent = `🔍 Lettura ${ocrScanMode === 'mrz' ? 'zona MRZ' : 'Full-Card CIE'}... ${pct}%`;
-    } else if (m.status === 'loading language traineddata' || m.status === 'loading tesseract core') {
-      statusText.textContent = '📥 Caricamento modelli OCR in memoria...';
-    }
-  });
-
   try {
-    if (statusText) statusText.textContent = '🔍 Normalizzazione immagine & analisi OCR Full-Card...';
-    const ocrOutcome = await recognizeDocumentCanvas(canvas, ocrScanMode, activeOcrTarget);
+    let ocrOutcome = null;
+
+    if (ocrEngineMode === 'paddle') {
+      if (statusText) statusText.textContent = '🚀 Avvio motore AI Pro (PaddleOCR ONNX)...';
+      ocrOutcome = await recognizeWithNextGen(canvas, {
+        mode: ocrScanMode,
+        target: activeOcrTarget,
+        useOpenCv: openCvWarpEnabled,
+        onStatus: (msg) => {
+          if (statusText) statusText.textContent = msg;
+        }
+      });
+    } else {
+      setOcrStatusCallback((m) => {
+        if (!statusText) return;
+        if (m.status === 'recognizing text') {
+          const pct = Math.round((m.progress || 0) * 100);
+          statusText.textContent = `🔍 Lettura ${ocrScanMode === 'mrz' ? 'zona MRZ' : 'Full-Card CIE'}... ${pct}%`;
+        } else if (m.status === 'loading language traineddata' || m.status === 'loading tesseract core') {
+          statusText.textContent = '📥 Caricamento modelli OCR in memoria...';
+        }
+      });
+
+      if (statusText) statusText.textContent = '🔍 Normalizzazione immagine & analisi OCR Full-Card...';
+      ocrOutcome = await recognizeDocumentCanvas(canvas, ocrScanMode, activeOcrTarget);
+    }
 
     if (ocrOutcome && ocrOutcome.debug) {
       const debugImg = document.getElementById('ocrDebugPreviewImg');
@@ -1771,7 +1966,11 @@ async function processDocImageOCR(canvas) {
       return;
     }
   } catch (err) {
-    console.warn('Errore elaborazione Tesseract Worker:', err);
+    console.warn('Errore elaborazione motore OCR:', err);
+    const debugRaw = document.getElementById('ocrDebugRawText');
+    if (debugRaw && !debugRaw.textContent) {
+      debugRaw.textContent = `[Errore motore OCR (${ocrEngineMode})]\n${err && err.message ? err.message : String(err)}`;
+    }
   }
 
   parseAndApplyDocFrontFallback();
@@ -1781,7 +1980,9 @@ function showOcrSuccessBadge(data, sourceLabel) {
   const statusText = document.getElementById('cameraStatusText');
   const badge = document.getElementById('docCapturedBadge');
   const summary = document.getElementById('docCapturedSummary');
-  const label = (data && data.mrzVerified) ? 'MRZ (Checksum ICAO OK)' : sourceLabel;
+  const label = (data && data.mrzVerified && !String(sourceLabel || '').includes('Checksum ICAO OK'))
+    ? 'MRZ (Checksum ICAO OK)'
+    : sourceLabel;
 
   if (statusText) statusText.textContent = `✅ Analisi ${label} completata con successo!`;
   if (badge) badge.style.display = 'flex';
@@ -2330,6 +2531,9 @@ Object.assign(window, {
   saveStudentEntryAndPrint,
   setActionType,
   setOcrScanMode,
+  setOcrEngineMode,
+  toggleAutoCaptureSetting,
+  toggleOpenCvWarpSetting,
   toggleCamera,
   triggerDocUpload,
   handleDocFileUpload,

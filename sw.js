@@ -2,16 +2,16 @@
  * sw.js - Service Worker per Portineria Digitale Scolastica (Offline-First PWA)
  *
  * Strategie implementate:
- * - Asset locali (HTML, CSS, JS, Manifest, Icone): Stale-While-Revalidate / Cache-First
- *   con fallback offline su ./index.html per le navigazioni.
- * - Risorse esterne OCR (Tesseract.js, Worker, Core WASM, ita.traineddata):
+ * - Asset locali (HTML, CSS, JS, Manifest, Icone): Network-First con fallback offline
+ *   su cache locale / ./index.html per le navigazioni.
+ * - Risorse esterne OCR (Tesseract.js, ONNX Runtime, PaddleOCR, OCRB):
  *   Cache-First persistente per garantire il funzionamento 100% offline in portineria
  *   dopo il primo caricamento.
  */
 
-const CACHE_VERSION = 'v1.3.0';
+const CACHE_VERSION = 'v2.0.0-r3';
 const STATIC_CACHE = `portineria-static-${CACHE_VERSION}`;
-const OCR_CACHE = `portineria-ocr-${CACHE_VERSION}`;
+const OCR_CACHE = 'portineria-ocr-v2.0.0';
 
 const LOCAL_ASSETS = [
   './',
@@ -19,6 +19,7 @@ const LOCAL_ASSETS = [
   './css/style.css',
   './js/app.js',
   './js/api.js',
+  './js/ocr_nextgen.js',
   './js/storage.js',
   './manifest.json',
   './assets/icons/icon-192.png',
@@ -36,8 +37,16 @@ function isOcrResource(url) {
     url.hostname.includes('cdn.jsdelivr.net') ||
     url.hostname.includes('tessdata.projectnaptha.com') ||
     url.hostname.includes('unpkg.com') ||
+    url.hostname.includes('huggingface.co') ||
+    url.hostname.includes('hf.co') ||
+    url.hostname.includes('docs.opencv.org') ||
     href.includes('tesseract') ||
     href.includes('traineddata') ||
+    href.includes('onnxruntime') ||
+    href.includes('esearch-ocr') ||
+    href.includes('OCRB') ||
+    href.includes('.onnx') ||
+    href.includes('dict.txt') ||
     href.endsWith('.wasm')
   );
 }
@@ -95,41 +104,32 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // 1. Risorse locali: Stale-While-Revalidate (risposta immediata da cache + aggiornamento in background)
+  // 1. Risorse locali: Network-First con fallback in cache (mostra subito gli aggiornamenti online, funziona offline)
   if (url.origin === self.location.origin) {
     event.respondWith(
       (async () => {
         const cache = await caches.open(STATIC_CACHE);
-        const cached = await cache.match(request, { ignoreSearch: true });
+        try {
+          const networkRes = await fetch(request);
+          if (networkRes && networkRes.ok) {
+            cache.put(request, networkRes.clone());
+          }
+          return networkRes;
+        } catch (err) {
+          const cached = await cache.match(request, { ignoreSearch: true });
+          if (cached) return cached;
 
-        const networkPromise = fetch(request)
-          .then((networkRes) => {
-            if (networkRes && networkRes.ok) {
-              cache.put(request, networkRes.clone());
-            }
-            return networkRes;
-          })
-          .catch(() => null);
+          // Fallback per navigazioni offline
+          if (request.mode === 'navigate') {
+            const fallback = await cache.match('./index.html');
+            if (fallback) return fallback;
+          }
 
-        if (cached) {
-          // Aggiorna in background senza bloccare il rendering
-          event.waitUntil(networkPromise);
-          return cached;
+          return new Response('Offline - Risorsa non disponibile in cache', {
+            status: 503,
+            statusText: 'Service Unavailable'
+          });
         }
-
-        const networkRes = await networkPromise;
-        if (networkRes) return networkRes;
-
-        // Fallback per navigazioni offline
-        if (request.mode === 'navigate') {
-          const fallback = await cache.match('./index.html');
-          if (fallback) return fallback;
-        }
-
-        return new Response('Offline - Risorsa non disponibile in cache', {
-          status: 503,
-          statusText: 'Service Unavailable'
-        });
       })()
     );
     return;

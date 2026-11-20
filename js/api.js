@@ -578,7 +578,7 @@ function isBirthLabel(txt) {
 }
 
 function isIssuingLabel(txt) {
-  return /(?:^|\b)(EMISSIONE|ISSUING)(?:\b|$)/.test(txt);
+  return /(?:^|\b)(EMISS[I1][O0Q]NE|EMIS[A-Z0-9]{2,4}NE|[IL1]SSUING)(?:\b|$)/.test(txt);
 }
 
 function isExpiryLabel(txt) {
@@ -643,16 +643,43 @@ function cleanPersonNameValue(raw) {
     .trim();
 }
 
-function rebuildLineTextExcludingLeftOf(line, minX) {
-  if (!line || !Array.isArray(line.words) || line.words.length === 0 || !minX) {
+function rebuildLineTextExcludingLeftOf(line, minX, maxStartX = Infinity, canvasWidth = 0, stopOnColumnGap = true) {
+  if (!line || !Array.isArray(line.words) || line.words.length === 0) {
     return line ? line.text : '';
   }
-  const kept = line.words.filter((w) => {
-    const wx1 = w.bbox ? w.bbox.x1 : 99999;
-    return wx1 >= minX;
-  });
+
+  let kept = line.words
+    .filter((w) => {
+      const wx1 = w.bbox ? w.bbox.x1 : 99999;
+      return !minX || wx1 >= minX;
+    })
+    .sort((a, b) => (a.bbox ? a.bbox.x0 : 0) - (b.bbox ? b.bbox.x0 : 0));
+
   if (kept.length === 0) return '';
-  const joined = cleanOcrLineText(kept.map((w) => w.text || '').join(' '));
+
+  if (Number.isFinite(maxStartX)) {
+    const startIdx = kept.findIndex((w) => (w.bbox ? w.bbox.x0 : 0) <= maxStartX);
+    if (startIdx === -1) return '';
+    kept = kept.slice(startIdx);
+  }
+
+  // Interrompe eventuali salti orizzontali ampi (es. ologramma/sigillo a destra della riga Cognome/Nome)
+  let finalWords = kept;
+  if (stopOnColumnGap) {
+    const maxGap = Math.max((line.height || 16) * 4.5, (canvasWidth || 1000) * 0.14);
+    const contiguous = [kept[0]];
+    for (let i = 1; i < kept.length; i++) {
+      const prev = contiguous[contiguous.length - 1];
+      const cur = kept[i];
+      if (prev.bbox && cur.bbox && (cur.bbox.x0 - prev.bbox.x1) > maxGap) {
+        break;
+      }
+      contiguous.push(cur);
+    }
+    finalWords = contiguous;
+  }
+
+  const joined = cleanOcrLineText(finalWords.map((w) => w.text || '').join(' '));
   return joined;
 }
 
@@ -752,19 +779,31 @@ export function parseCieFrontLines(rawLines = [], rawText = '', canvasHeight = 0
     }
   }
 
-  // Helper: trova la prima riga pulita subito sotto l'etichetta, filtrando eventuali parole della fototessera a sinistra dell'ancora
+  // Helper: trova la prima riga pulita subito sotto l'etichetta nella stessa colonna verticale (esclude fototessera a sinistra e ologrammi a destra)
   const extractNextValueLine = (anchorIdx, allowDigits = false) => {
     const anchor = normalizedLines[anchorIdx];
     const minWordX = (anchor.bbox && anchor.bbox.x0 > canvasWidth * 0.25) ? (anchor.bbox.x0 - 45) : 0;
+    const colMargin = Math.max(70, canvasWidth * 0.10);
+    const hasColBounds = Boolean(
+      !allowDigits &&
+      hasRealLines &&
+      anchor.bbox &&
+      canvasWidth > 0 &&
+      (anchor.bbox.x1 - anchor.bbox.x0) < canvasWidth * 0.75
+    );
+    const maxStartX = hasColBounds ? (anchor.bbox.x1 + colMargin) : Infinity;
 
-    for (let offset = 1; offset <= 2; offset++) {
+    for (let offset = 1; offset <= 4; offset++) {
       const next = normalizedLines[anchorIdx + offset];
       if (!next) break;
       const gap = next.yCenter - anchor.yCenter;
       if (gap > anchor.height * 4.5) break;
+      if (hasColBounds && next.bbox && (next.bbox.x0 > anchor.bbox.x1 + colMargin || next.bbox.x1 < anchor.bbox.x0 - colMargin)) {
+        continue;
+      }
       if (isAnyFieldAnchor(next.text)) break;
 
-      const filteredText = rebuildLineTextExcludingLeftOf(next, minWordX) || next.text;
+      const filteredText = rebuildLineTextExcludingLeftOf(next, minWordX, maxStartX, canvasWidth, !allowDigits) || (hasColBounds ? '' : next.text);
       if (!filteredText || isPureLabelOrNoiseLine(filteredText)) continue;
       if (!allowDigits && /^\d+$/.test(filteredText.replace(/\s/g, ''))) continue;
       return { text: filteredText, confidence: next.confidence, index: anchorIdx + offset };
@@ -862,7 +901,7 @@ export function parseCieFrontLines(rawLines = [], rawText = '', canvasHeight = 0
             confidences.dataScadenza = nextVal.confidence;
           }
         } else if (nextDates.length === 1) {
-          if (isExpiryLabel(line.text) && !isIssuingLabel(line.text) && !dataScadenzaIso) {
+          if (isExpiryLabel(line.text) && !isIssuingLabel(line.text) && !dataScadenzaIso && nextDates[0].year >= new Date().getFullYear() - 1) {
             dataScadenzaIso = nextDates[0].iso;
             confidences.dataScadenza = nextVal.confidence;
           } else if (isIssuingLabel(line.text) && !isExpiryLabel(line.text) && !dataEmissioneIso) {
