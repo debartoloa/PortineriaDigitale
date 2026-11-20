@@ -13,7 +13,7 @@ import {
 /* ==========================================================================
    STATO GLOBALE APPLICATIVO
    ========================================================================== */
-const APP_VERSION = 'v1.2.1';
+const APP_VERSION = 'v1.3.0';
 let records = [];
 let mediaStream = null;
 let currentStudentAction = 'ENTRARE';
@@ -976,6 +976,13 @@ function resetDocCaptureUI() {
   if (btnsReview) btnsReview.style.display = 'none';
   if (placeholder) placeholder.style.display = 'flex';
   if (statusText) statusText.textContent = 'Fotocamera non attiva';
+
+  const debugImg = document.getElementById('ocrDebugPreviewImg');
+  const debugRaw = document.getElementById('ocrDebugRawText');
+  const debugDetails = document.getElementById('ocrDebugDetails');
+  if (debugImg) debugImg.removeAttribute('src');
+  if (debugRaw) debugRaw.textContent = '';
+  if (debugDetails) debugDetails.open = false;
 }
 
 function openVisitorModal() {
@@ -1578,10 +1585,22 @@ async function toggleCamera() {
     mediaStream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: currentCameraFacing,
-        width: { ideal: 1920, min: 1280 },
-        height: { ideal: 1080, min: 720 }
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       }
     });
+
+    const videoTrack = mediaStream.getVideoTracks()[0];
+    if (videoTrack && typeof videoTrack.getCapabilities === 'function') {
+      try {
+        const caps = videoTrack.getCapabilities();
+        if (caps.focusMode && caps.focusMode.includes('continuous')) {
+          await videoTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+        }
+      } catch {
+        // Ignora se focusMode continuous non è supportato dal dispositivo
+      }
+    }
 
     video.srcObject = mediaStream;
     video.style.display = 'block';
@@ -1725,15 +1744,27 @@ async function processDocImageOCR(canvas) {
     if (!statusText) return;
     if (m.status === 'recognizing text') {
       const pct = Math.round((m.progress || 0) * 100);
-      statusText.textContent = `🔍 Lettura ${ocrScanMode === 'mrz' ? 'zona MRZ' : 'zone ROI fronte'}... ${pct}%`;
+      statusText.textContent = `🔍 Lettura ${ocrScanMode === 'mrz' ? 'zona MRZ' : 'Full-Card CIE'}... ${pct}%`;
     } else if (m.status === 'loading language traineddata' || m.status === 'loading tesseract core') {
       statusText.textContent = '📥 Caricamento modelli OCR in memoria...';
     }
   });
 
   try {
-    if (statusText) statusText.textContent = '🔍 Pre-elaborazione Bradley-Roth & analisi OCR multi-zona...';
+    if (statusText) statusText.textContent = '🔍 Normalizzazione immagine & analisi OCR Full-Card...';
     const ocrOutcome = await recognizeDocumentCanvas(canvas, ocrScanMode, activeOcrTarget);
+
+    if (ocrOutcome && ocrOutcome.debug) {
+      const debugImg = document.getElementById('ocrDebugPreviewImg');
+      const debugRaw = document.getElementById('ocrDebugRawText');
+      if (debugImg && ocrOutcome.debug.preprocessedDataUrl) {
+        debugImg.src = ocrOutcome.debug.preprocessedDataUrl;
+      }
+      if (debugRaw) {
+        debugRaw.textContent = ocrOutcome.debug.rawText || '(Nessun testo rilevato)';
+      }
+    }
+
     if (ocrOutcome && ocrOutcome.data) {
       applyExtractedDocData(ocrOutcome.data);
       showOcrSuccessBadge(ocrOutcome.data, ocrOutcome.sourceLabel);

@@ -35,7 +35,7 @@
         <h2 id="wizardTitle">Benvenuto in Portineria Digitale!</h2>
         <p id="wizardSubtitle">Per iniziare, inserisci il nome del tuo Istituto Scolastico e gli indirizzi di studio o plessi presenti.</p>
         <div style="margin-top: 10px;">
-          <span id="wizardVersionBadge" class="version-pill">v1.2.1</span>
+          <span id="wizardVersionBadge" class="version-pill">v1.3.0</span>
         </div>
       </div>
 
@@ -124,7 +124,7 @@
             <span id="connectionStatusText">Online</span>
           </div>
 
-          <span id="appVersionBadge" class="version-pill" title="Versione applicazione">v1.2.1</span>
+          <span id="appVersionBadge" class="version-pill" title="Versione applicazione">v1.3.0</span>
 
           <!-- Pulsante Installazione PWA -->
           <button type="button" class="btn-header-tool btn-install-pwa" id="btnInstallApp" onclick="handleInstallClick()" style="display: none;" title="Installa l'app sul dispositivo per uso Kiosk a schermo intero">
@@ -571,6 +571,13 @@
                     <input type="date" id="ocrQuickDataNascita" oninput="syncOcrField('dataNascita', this.value)">
                   </div>
                 </div>
+                <details id="ocrDebugDetails" class="ocr-debug-box">
+                  <summary>🔍 Diagnostica OCR (Immagine pre-elaborata &amp; testo letto)</summary>
+                  <div class="ocr-debug-content">
+                    <img id="ocrDebugPreviewImg" alt="Anteprima immagine pre-elaborata per OCR">
+                    <pre id="ocrDebugRawText"></pre>
+                  </div>
+                </details>
               </div>
             </div>
           </div>

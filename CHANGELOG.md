@@ -2,6 +2,19 @@
 
 Tutte le modifiche rilevanti a **Portineria Digitale Scolastica** sono documentate in questo file secondo il formato [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.3.0] - 2026-11-20
+
+### Fixed & Improved
+- **Ricostruzione Motore OCR Fronte CIE (`js/api.js`, `js/app.js`)**:
+  - Sostituita la binarizzazione hard 1-bit con **Illumination Flattening + Scala di Grigi Morbida Anti-Ciano** (`0.58*R + 0.34*G + 0.08*B` e sfondo locale a raggio ampio tramite Integral Image), preservando i contorni anti-aliased ideali per Tesseract 5 LSTM.
+  - Aggiunto `prepareOcrCanvas` (upscaling dolce a 1600px sul lato lungo e bordo bianco di 16px).
+  - Abilitato `{ blocks: true }` su `worker.recognize` per leggere correttamente `blocks -> paragraphs -> lines` in Tesseract.js v5 (prima `result.data.lines` era `undefined`).
+  - Passaggio primario **`PSM 3` (Auto multi-colonna) senza whitelist restrittiva** sul modello `ita`, con fallback `PSM 11` e fallback scala di grigi leggera.
+  - Parser CIE potenziato con ancore fuzzy (`COGNOME/SURNANE`, `NOME/NAME`), regola valore su riga sottostante, supporto date `EMISSIONE`/`SCADENZA` affiancate sulla stessa riga e **ancoraggio inverso dalla data di nascita** se le etichette corsive mancano.
+  - Rimossi i vincoli `min: 1280` su `getUserMedia` per compatibilità iOS portrait e aggiunto `focusMode: 'continuous'` ove supportato.
+- **Diagnostica OCR opzionale (`index.html`, `css/style.css`)**: aggiunto `<details id="ocrDebugDetails">` chiuso di default per ispezionare anteprima pre-elaborata e testo grezzo letto da Tesseract.
+- **Service Worker (`sw.js`)**: incrementata la versione cache a `v1.3.0` e aggiornati i badge versione a `v1.3.0`.
+
 ## [1.2.1] - 2026-11-20
 
 ### Added
