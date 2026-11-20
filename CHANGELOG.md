@@ -2,6 +2,16 @@
 
 Tutte le modifiche rilevanti a **Portineria Digitale Scolastica** sono documentate in questo file secondo il formato [Keep a Changelog](https://keepachangelog.com/it/1.1.0/) e il [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.2.0] - 2026-11-20
+
+### Changed
+- **Pipeline OCR Fronte CIE Full-Card & Indipendente dalla Posizione (`js/api.js`, `js/app.js`, `css/style.css`)**:
+  - **Ritaglio con Margine di Tolleranza (12%) & Risoluzione Nativa**: `getGuideCropCoordinates` aggiunge il 12% di padding esterno su tutti e 4 i lati e `captureAndAnalyzeDocFront` preserva la risoluzione nativa del frame video senza downscaling forzato.
+  - **Pre-processing Ottimizzato per CIE Italiana**: scala di grigi pesata sui canali Rosso/Giallo (`0.50*R + 0.42*G + 0.08*B`) per attenuare il guilloché azzurro/ciano, contrasto dinamico, leggero sharpening 3×3 e binarizzazione adattiva Bradley-Roth.
+  - **OCR Full-Card su `result.data.lines`**: eliminati i sub-box rigidi sul fronte; esecuzione con `PSM 6` (e fallback `PSM 11`) con whitelist italiana estesa.
+  - **Parser a Ancore Semantiche (`parseCieFrontLines`)**: ancora verticale su Numero Documento, `COGNOME/SURNAME`, `NOME/NAME`, `LUOGO E DATA DI NASCITA`, `EMISSIONE/ISSUING` e `SCADENZA/EXPIRY`, pulizia caratteri spuri ed evidenziazione in giallo (`.ocr-low-confidence`) per i campi con confidenza OCR `< 70%`.
+- **Service Worker (`sw.js`)**: incrementata la versione cache a `v1.2.0`.
+
 ## [1.1.1] - 2026-11-18
 
 ### Fixed

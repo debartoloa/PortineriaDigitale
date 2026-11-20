@@ -1514,10 +1514,14 @@ function syncOcrField(field, val) {
   if (activeOcrTarget === 'visitor') {
     if (field === 'cognome') {
       const el = document.getElementById('vCognome');
-      if (el) el.value = val;
+      if (el) { el.value = val; el.classList.remove('ocr-low-confidence'); }
+      const q = document.getElementById('ocrQuickCognome');
+      if (q) q.classList.remove('ocr-low-confidence');
     } else if (field === 'nome') {
       const el = document.getElementById('vNome');
-      if (el) el.value = val;
+      if (el) { el.value = val; el.classList.remove('ocr-low-confidence'); }
+      const q = document.getElementById('ocrQuickNome');
+      if (q) q.classList.remove('ocr-low-confidence');
     }
     return;
   }
@@ -1531,8 +1535,19 @@ function syncOcrField(field, val) {
   const targetId = map[field];
   if (targetId) {
     const el = document.getElementById(targetId);
-    if (el) el.value = val;
+    if (el) {
+      el.value = val;
+      el.classList.remove('ocr-low-confidence');
+    }
   }
+  const quickMap = {
+    cognome: 'ocrQuickCognome',
+    nome: 'ocrQuickNome',
+    docNum: 'ocrQuickDocNum',
+    dataNascita: 'ocrQuickDataNascita'
+  };
+  const quickEl = document.getElementById(quickMap[field]);
+  if (quickEl) quickEl.classList.remove('ocr-low-confidence');
 }
 
 async function toggleCamera() {
@@ -1624,11 +1639,11 @@ function captureAndAnalyzeDocFront() {
 
   playScannerBeep();
 
-  const crop = getGuideCropCoordinates(video, guide);
-  canvas.width = 1200;
-  canvas.height = 756;
+  const crop = getGuideCropCoordinates(video, guide, 0.12);
+  canvas.width = crop.sw;
+  canvas.height = crop.sh;
 
-  canvas.getContext('2d').drawImage(video, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, 1200, 756);
+  canvas.getContext('2d').drawImage(video, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, crop.sw, crop.sh);
 
   const capturedDataUrl = canvas.toDataURL('image/jpeg', 0.95);
   if (previewImg) {
@@ -1770,51 +1785,67 @@ function parseAndApplyDocFrontFallback() {
   showToast('Immagine acquisita. Completa i campi anagrafici se necessario.', 'info');
 }
 
+function setFieldWithConfidence(elementId, value, confidence, quickId = null) {
+  const el = document.getElementById(elementId);
+  const qEl = quickId ? document.getElementById(quickId) : null;
+  const isLow = typeof confidence === 'number' && confidence < 70;
+
+  if (el) {
+    el.classList.remove('ocr-low-confidence');
+    if (value) {
+      el.value = value;
+      if (isLow) {
+        el.classList.add('ocr-low-confidence');
+        el.addEventListener('input', () => el.classList.remove('ocr-low-confidence'), { once: true });
+      }
+    }
+  }
+  if (qEl) {
+    qEl.classList.remove('ocr-low-confidence');
+    if (value) {
+      qEl.value = value;
+      if (isLow) qEl.classList.add('ocr-low-confidence');
+    }
+  }
+}
+
 function applyExtractedDocData(data) {
+  const conf = data.confidences || {};
+
+  // Rimuovi evidenziazioni precedenti
+  [
+    'vCognome', 'vNome', 'sDocNum', 'sGenitoreCognome', 'sGenitoreNome',
+    'sGenitoreLuogo', 'sGenitoreDataNascita', 'sDocRil', 'sDocScad',
+    'ocrQuickCognome', 'ocrQuickNome', 'ocrQuickDocNum', 'ocrQuickDataNascita'
+  ].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('ocr-low-confidence');
+  });
+
   if (activeOcrTarget === 'visitor') {
-    if (data.cognome) {
-      const vCog = document.getElementById('vCognome');
-      if (vCog) vCog.value = data.cognome;
-      const q = document.getElementById('ocrQuickCognome');
-      if (q) q.value = data.cognome;
-    }
-    if (data.nome) {
-      const vNom = document.getElementById('vNome');
-      if (vNom) vNom.value = data.nome;
-      const q = document.getElementById('ocrQuickNome');
-      if (q) q.value = data.nome;
-    }
+    setFieldWithConfidence('vCognome', data.cognome, conf.cognome, 'ocrQuickCognome');
+    setFieldWithConfidence('vNome', data.nome, conf.nome, 'ocrQuickNome');
     return;
   }
 
   if (data.docTipo) document.getElementById('sDocTipo').value = data.docTipo;
-  if (data.docNum) {
-    document.getElementById('sDocNum').value = data.docNum;
-    const q = document.getElementById('ocrQuickDocNum');
-    if (q) q.value = data.docNum;
-  }
-  if (data.cognome) {
-    document.getElementById('sGenitoreCognome').value = data.cognome;
-    const q = document.getElementById('ocrQuickCognome');
-    if (q) q.value = data.cognome;
-  }
-  if (data.nome) {
-    document.getElementById('sGenitoreNome').value = data.nome;
-    const q = document.getElementById('ocrQuickNome');
-    if (q) q.value = data.nome;
-  }
-  if (data.luogoNascita) document.getElementById('sGenitoreLuogo').value = data.luogoNascita;
-  if (data.dataNascita) {
-    document.getElementById('sGenitoreDataNascita').value = data.dataNascita;
-    const q = document.getElementById('ocrQuickDataNascita');
-    if (q) q.value = data.dataNascita;
+  setFieldWithConfidence('sDocNum', data.docNum, conf.docNum, 'ocrQuickDocNum');
+  setFieldWithConfidence('sGenitoreCognome', data.cognome, conf.cognome, 'ocrQuickCognome');
+  setFieldWithConfidence('sGenitoreNome', data.nome, conf.nome, 'ocrQuickNome');
+  setFieldWithConfidence('sGenitoreLuogo', data.luogoNascita, conf.luogoNascita);
+  setFieldWithConfidence('sGenitoreDataNascita', data.dataNascita, conf.dataNascita, 'ocrQuickDataNascita');
+
+  if (data.dataEmissione) {
+    setFieldWithConfidence('sDocRil', data.dataEmissione, conf.dataEmissione);
   }
   if (data.dataScadenza) {
-    document.getElementById('sDocScad').value = data.dataScadenza;
-    const parts = data.dataScadenza.split('-');
-    if (parts.length === 3) {
-      const rYear = parseInt(parts[0], 10) - 10;
-      document.getElementById('sDocRil').value = `${rYear}-${parts[1]}-${parts[2]}`;
+    setFieldWithConfidence('sDocScad', data.dataScadenza, conf.dataScadenza);
+    if (!data.dataEmissione) {
+      const parts = data.dataScadenza.split('-');
+      if (parts.length === 3) {
+        const rYear = parseInt(parts[0], 10) - 10;
+        document.getElementById('sDocRil').value = `${rYear}-${parts[1]}-${parts[2]}`;
+      }
     }
   }
   if (data.ente) document.getElementById('sDocEnte').value = data.ente;

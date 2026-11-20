@@ -1263,6 +1263,12 @@ label {
   box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
 }
 
+.ocr-low-confidence {
+  background-color: #fefcbf !important;
+  border-color: #d69e2e !important;
+  box-shadow: 0 0 0 2px rgba(214, 158, 46, 0.25) !important;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }

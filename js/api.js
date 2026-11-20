@@ -1,7 +1,8 @@
 /**
  * js/api.js - Motore OCR client-side (Tesseract.js Worker riutilizzabile),
- * pre-elaborazione immagine Bradley-Roth + Sharpening, ritaglio per zone (ROI)
- * e parser con validazione matematica Check-Digit ICAO 9303 (7-3-1).
+ * pre-elaborazione immagine ottimizzata per CIE italiana (pesatura Rosso/Giallo
+ * + Sharpening + Binarizzazione Adattiva Bradley-Roth), OCR Full-Card su
+ * result.data.lines con ancore semantiche, e validazione Check-Digit ICAO 9303.
  */
 
 let tesseractWorkerPromise = null;
@@ -37,16 +38,17 @@ export async function getOcrWorker() {
 }
 
 /**
- * Calcola le coordinate di ritaglio 1:1 tra il flusso video e la cornice guida a schermo.
+ * Calcola le coordinate di ritaglio tra il flusso video e la cornice guida a schermo,
+ * aggiungendo un margine di tolleranza esterno (default 12%) su tutti e quattro i lati.
  */
-export function getGuideCropCoordinates(video, guide) {
+export function getGuideCropCoordinates(video, guide, paddingRatio = 0.12) {
   const vW = video.videoWidth || 1280;
   const vH = video.videoHeight || 720;
   const vRect = video.getBoundingClientRect();
   const gRect = guide.getBoundingClientRect();
 
-  const elemW = vRect.width;
-  const elemH = vRect.height;
+  const elemW = vRect.width || 1;
+  const elemH = vRect.height || 1;
   const videoAspect = vW / vH;
   const elemAspect = elemW / elemH;
 
@@ -73,22 +75,26 @@ export function getGuideCropCoordinates(video, guide) {
   let sw = gRect.width * scaleX;
   let sh = gRect.height * scaleY;
 
-  const padX = sw * 0.015;
-  const padY = sh * 0.015;
+  // Margine di tolleranza del 12% (tra 10% e 15%) su tutti e quattro i lati
+  const padX = sw * paddingRatio;
+  const padY = sh * paddingRatio;
   sx = Math.max(0, sx - padX);
   sy = Math.max(0, sy - padY);
   sw = Math.min(vW - sx, sw + padX * 2);
   sh = Math.min(vH - sy, sh + padY * 2);
 
-  return { sx, sy, sw, sh };
+  return {
+    sx: Math.round(sx),
+    sy: Math.round(sy),
+    sw: Math.max(1, Math.round(sw)),
+    sh: Math.max(1, Math.round(sh))
+  };
 }
 
 /**
- * Ritaglia una sotto-regione normalizzata { x, y, w, h } da un canvas,
- * aggiunge padding bianco intorno ai caratteri e garantisce un'altezza minima
- * per migliorare il riconoscimento LSTM di Tesseract.
+ * Ritaglia una sotto-regione normalizzata { x, y, w, h } da un canvas (usata per fascia MRZ).
  */
-export function cropCanvasRegion(sourceCanvas, normRect, padPx = 12) {
+export function cropCanvasRegion(sourceCanvas, normRect, padPx = 14) {
   const srcW = sourceCanvas.width;
   const srcH = sourceCanvas.height;
 
@@ -97,7 +103,7 @@ export function cropCanvasRegion(sourceCanvas, normRect, padPx = 12) {
   const sw = Math.max(1, Math.min(srcW - sx, Math.ceil((normRect.w || 1) * srcW)));
   const sh = Math.max(1, Math.min(srcH - sy, Math.ceil((normRect.h || 1) * srcH)));
 
-  const minHeight = 140;
+  const minHeight = 160;
   const scale = sh < minHeight ? minHeight / sh : 1;
   const dstW = Math.round(sw * scale);
   const dstH = Math.round(sh * scale);
@@ -117,10 +123,13 @@ export function cropCanvasRegion(sourceCanvas, normRect, padPx = 12) {
 }
 
 /**
- * Pre-elaborazione avanzata immagine:
- * 1. Scala di grigi + stretching di contrasto (percentili 2%-98%)
- * 2. Filtro di Sharpening 3x3 (1.8 * centro - 0.2 * vicini cardinali)
- * 3. Binarizzazione adattiva locale di Bradley-Roth tramite Integral Image O(1)
+ * Pre-elaborazione ottimizzata per il fronte della CIE italiana:
+ * 1. Scala di grigi pesata Rosso/Giallo (0.50*R + 0.42*G + 0.08*B) per attenuare
+ *    le trame di sicurezza azzurro/ciano (guilloché) mantenendo scuro il testo.
+ * 2. Stretching di contrasto (percentili 2%-98%).
+ * 3. Leggero filtro Sharpening 3x3 per definire i caratteri piccoli.
+ * 4. Binarizzazione adattiva locale (Bradley-Roth con Integral Image O(1)) in
+ *    modo che le onde pastello diventino #FFFFFF e il testo #000000.
  */
 export function preprocessCardImage(sourceCanvas, options = {}) {
   const w = sourceCanvas.width;
@@ -138,15 +147,16 @@ export function preprocessCardImage(sourceCanvas, options = {}) {
     const d = imgData.data;
     const total = w * h;
 
-    // 1. Scala di grigi + istogramma per stretching 2% - 98%
+    // 1. Scala di grigi pesata su Rosso/Giallo per attenuare il ciano/azzurro della CIE
     const gray = new Float32Array(total);
     const hist = new Int32Array(256);
     for (let p = 0, i = 0; p < total; p++, i += 4) {
-      const lum = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+      const lum = Math.round(0.50 * d[i] + 0.42 * d[i + 1] + 0.08 * d[i + 2]);
       gray[p] = lum;
       hist[lum]++;
     }
 
+    // 2. Stretching di contrasto dinamico (2% - 98%)
     let minCut = 0;
     let maxCut = 255;
     let accum = 0;
@@ -168,7 +178,7 @@ export function preprocessCardImage(sourceCanvas, options = {}) {
       stretched[p] = val < 0 ? 0 : (val > 255 ? 255 : val);
     }
 
-    // 2. Filtro Sharpening 3x3 (Unsharp mask leggero sui bordi dei caratteri)
+    // 3. Leggero Sharpening 3x3
     const sharp = new Float32Array(total);
     for (let y = 0; y < h; y++) {
       const rowOffset = y * w;
@@ -184,12 +194,12 @@ export function preprocessCardImage(sourceCanvas, options = {}) {
           stretched[idx + 1] +
           stretched[idx - w] +
           stretched[idx + w];
-        const v = center * 1.8 - neighbors * 0.2;
+        const v = center * 1.6 - neighbors * 0.15;
         sharp[idx] = v < 0 ? 0 : (v > 255 ? 255 : v);
       }
     }
 
-    // 3. Integral Image (dimensione (w + 1) x (h + 1) con bordo zero)
+    // 4. Integral Image & Binarizzazione Adattiva Locale (Bradley-Roth)
     const iw = w + 1;
     const integral = new Float64Array(iw * (h + 1));
     for (let y = 1; y <= h; y++) {
@@ -203,9 +213,8 @@ export function preprocessCardImage(sourceCanvas, options = {}) {
       }
     }
 
-    // 4. Binarizzazione adattiva locale Bradley-Roth
-    const r = Math.max(8, Math.round(Math.min(w, h) / 22));
-    const t = typeof options.thresholdSensitivity === 'number' ? options.thresholdSensitivity : 0.14;
+    const r = Math.max(10, Math.round(Math.min(w, h) / 20));
+    const t = typeof options.thresholdSensitivity === 'number' ? options.thresholdSensitivity : 0.15;
     const factor = 1 - t;
 
     for (let y = 0; y < h; y++) {
@@ -280,7 +289,7 @@ export function calculateMrzCheckDigit(str) {
     } else if (ch >= 'A' && ch <= 'Z') {
       val = ch.charCodeAt(0) - 55;
     } else {
-      val = 0; // '<' o altro filler
+      val = 0;
     }
     sum += val * weights[i % 3];
   }
@@ -303,19 +312,14 @@ function getAmbiguousAlternatives(ch, allowDigits, allowLetters) {
 }
 
 /**
- * Verifica un campo MRZ rispetto al proprio check digit ICAO e tenta di riparare
+ * Verifica un campo MRZ rispetto al proprio check digit ICAO e ripara
  * eventuali errori OCR su caratteri ambigui (0/O, 1/I, 2/Z, 5/S, 6/G, 8/B).
- * @param {string} rawField - Sottostringa MRZ del campo
- * @param {string} rawCheckChar - Carattere check digit adiacente
- * @param {'digits'|'docnum'} fieldType - Tipo di vincolo posizionale
- * @returns {{ value: string, verified: boolean }}
  */
 export function repairMrzFieldWithCheckDigit(rawField, rawCheckChar, fieldType = 'docnum') {
   const original = String(rawField || '').toUpperCase();
   const normCheckChar = toDigitChar(String(rawCheckChar || '').toUpperCase());
 
   if (!/^\d$/.test(normCheckChar)) {
-    // Check digit illeggibile: applica sola normalizzazione posizionale
     if (fieldType === 'digits') {
       return { value: original.split('').map(toDigitChar).join(''), verified: false };
     }
@@ -324,14 +328,12 @@ export function repairMrzFieldWithCheckDigit(rawField, rawCheckChar, fieldType =
 
   const expectedCheck = parseInt(normCheckChar, 10);
 
-  // 1. Verifica immediata sul campo grezzo
   if (calculateMrzCheckDigit(original) === expectedCheck) {
     if (fieldType !== 'digits' || /^\d+$/.test(original)) {
       return { value: original, verified: true };
     }
   }
 
-  // 2. Normalizzazione posizionale
   const chars = original.split('');
   const isItalianCieShape = fieldType === 'docnum' && chars.length === 9 &&
     ((chars[0] >= 'A' && chars[0] <= 'Z') || chars[0] in LETTER_NORMALIZE_MAP) &&
@@ -354,7 +356,6 @@ export function repairMrzFieldWithCheckDigit(rawField, rawCheckChar, fieldType =
     }
   }
 
-  // 3. Ricerca riparazione a singolo carattere sugli ambigui
   for (let i = 0; i < normalizedChars.length; i++) {
     const cur = normalizedChars[i];
     if (cur === '<') continue;
@@ -382,7 +383,6 @@ export function repairMrzFieldWithCheckDigit(rawField, rawCheckChar, fieldType =
     }
   }
 
-  // 4. Se nessun match esatto, tenta anche permutazioni su 2 posizioni per campi brevi (<= 9 char)
   for (let i = 0; i < normalizedChars.length; i++) {
     for (let j = i + 1; j < normalizedChars.length; j++) {
       const altsI = getAmbiguousAlternatives(
@@ -513,42 +513,103 @@ export function parseMrzText(rawText) {
   return null;
 }
 
+/* ==========================================================================
+   PARSING FRONTE CIE CON ANCORE SEMANTICHE, REGEX E CONFIDENZA PER CAMPO
+   ========================================================================== */
+const CIE_LABEL_STOPWORDS = [
+  'REPUBBLICA', 'ITALIANA', 'MINISTERO', 'INTERNO', 'CARTA', 'IDENTITA',
+  'IDENTITY', 'CARD', 'COMUNE', 'MUNICIPALITY', 'COGNOME', 'SURNAME',
+  'NOME', 'NAME', 'LUOGO', 'PLACE', 'NASCITA', 'BIRTH', 'SESSO', 'SEX',
+  'STATURA', 'HEIGHT', 'CITTADINANZA', 'NATIONALITY', 'EMISSIONE', 'ISSUING',
+  'SCADENZA', 'EXPIRY', 'FIRMA', 'TITOLARE', 'HOLDER', 'SIGNATURE', 'NON VALIDA'
+];
+
+function cleanOcrLineText(raw) {
+  return String(raw || '')
+    .toUpperCase()
+    .replace(/[|_*~^=«»[\]{}\\"]/g, ' ')
+    .replace(/(^|\s)[.,;:-]+(?=\s|$)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isPureLabelLine(txt) {
+  const tokens = txt.replace(/[^A-ZÀÈÉÌÒÙ\s]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return true;
+  return tokens.every((tok) => CIE_LABEL_STOPWORDS.some((sw) => tok === sw || (tok.length >= 4 && sw.includes(tok))));
+}
+
+function stripLabelWords(txt, regexList) {
+  let out = txt;
+  for (const rx of regexList) {
+    out = out.replace(rx, ' ');
+  }
+  return out.replace(/[/\\|:]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 /**
- * Estrae i dati anagrafici e del documento dal testo OCR del fronte tessera.
+ * Estrae i dati dal fronte della CIE italiana usando l'array strutturato
+ * `result.data.lines` (testo, confidenza, bbox) e le ancore verticali ufficiali.
  */
-export function parseDocFrontText(rawText) {
-  const text = (rawText || '').toUpperCase();
-  const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+export function parseCieFrontLines(rawLines = [], rawText = '', canvasHeight = 0) {
+  const normalizedLines = (Array.isArray(rawLines) && rawLines.length > 0
+    ? rawLines
+    : String(rawText || '').split('\n').map((t, idx) => ({
+      text: t,
+      confidence: 80,
+      bbox: { x0: 0, y0: idx * 30, x1: 100, y1: idx * 30 + 24 }
+    }))
+  )
+    .map((l, idx) => {
+      const text = cleanOcrLineText(l.text);
+      const bbox = l.bbox || { x0: 0, y0: idx * 30, x1: 100, y1: idx * 30 + 24 };
+      return {
+        text,
+        confidence: typeof l.confidence === 'number' ? l.confidence : 80,
+        bbox,
+        yCenter: (bbox.y0 + bbox.y1) / 2,
+        height: Math.max(12, bbox.y1 - bbox.y0)
+      };
+    })
+    .filter((l) => l.text.length > 0)
+    .sort((a, b) => a.yCenter - b.yCenter);
 
   let docNum = '';
   let cognome = '';
   let nome = '';
   let luogoNascita = '';
   let dataNascitaIso = '';
+  let dataEmissioneIso = '';
   let dataScadenzaIso = '';
   let tipoDoc = 'C.I. Elettronica (CIE)';
 
-  for (const l of lines) {
-    const cieM = l.match(/\b([A-Z0-9]{2})\s?([0-9OQLISZB]{5})\s?([A-Z0-9]{2})\b/i);
+  const confidences = {};
+
+  // 1. Numero Documento CIE (2 lettere + 5 cifre + 2 lettere, es. CA00000AA)
+  for (const line of normalizedLines) {
+    const cieM = line.text.match(/\b([A-Z0-9]{2})\s?([0-9OQLISZBG]{5})\s?([A-Z0-9]{2})\b/);
     if (cieM) {
-      const prefix = cieM[1].toUpperCase().split('').map(toLetterChar).join('');
-      const mid = cieM[2].toUpperCase().split('').map(toDigitChar).join('');
-      const suffix = cieM[3].toUpperCase().split('').map(toLetterChar).join('');
-      if (/^[A-Z]{2}\d{5}[A-Z]{2}$/.test(prefix + mid + suffix)) {
-        docNum = prefix + mid + suffix;
+      const prefix = cieM[1].split('').map(toLetterChar).join('');
+      const mid = cieM[2].split('').map(toDigitChar).join('');
+      const suffix = cieM[3].split('').map(toLetterChar).join('');
+      const candidate = prefix + mid + suffix;
+      if (/^[A-Z]{2}\d{5}[A-Z]{2}$/.test(candidate)) {
+        docNum = candidate;
         tipoDoc = 'C.I. Elettronica (CIE)';
+        confidences.docNum = line.confidence;
         break;
       }
     }
   }
 
+  const fullJoined = normalizedLines.map((l) => l.text).join('\n');
   if (!docNum) {
-    const paperMatch = text.match(/\b([A-Z]{2}\s?[0-9]{6,7})\b/);
+    const paperMatch = fullJoined.match(/\b([A-Z]{2}\s?[0-9]{6,7})\b/);
     if (paperMatch) {
       docNum = paperMatch[1].replace(/\s/g, '');
       tipoDoc = "Carta d'Identità Cartacea";
     } else {
-      const patMatch = text.match(/\b(U1[0-9A-Z]{7}[A-Z])\b/);
+      const patMatch = fullJoined.match(/\b(U1[0-9A-Z]{7}[A-Z])\b/);
       if (patMatch) {
         docNum = patMatch[1];
         tipoDoc = 'Patente di Guida';
@@ -556,35 +617,183 @@ export function parseDocFrontText(rawText) {
     }
   }
 
-  const dateRegex = /\b([0-3]?[0-9])[\/.-]([0-1]?[0-9])[\/.-]((?:19|20)[0-9]{2})\b/g;
-  let dMatch;
-  const curYear = new Date().getFullYear();
-  while ((dMatch = dateRegex.exec(text)) !== null) {
-    const dd = String(dMatch[1]).padStart(2, '0');
-    const mm = String(dMatch[2]).padStart(2, '0');
-    const yyyy = dMatch[3];
-    const yNum = parseInt(yyyy, 10);
-    const iso = `${yyyy}-${mm}-${dd}`;
-    if (yNum <= curYear - 14 && !dataNascitaIso) {
-      dataNascitaIso = iso;
-    } else if (yNum >= curYear && !dataScadenzaIso) {
-      dataScadenzaIso = iso;
+  // Helper: trova la riga valore subito sotto un'etichetta (o alla sua destra)
+  const extractValueAfterAnchor = (anchorIdx, anchorStripRegexes) => {
+    const anchor = normalizedLines[anchorIdx];
+    const inlineRest = stripLabelWords(anchor.text, anchorStripRegexes).replace(/[^A-ZÀÈÉÌÒÙ0-9\s'().-]/g, '').trim();
+    if (inlineRest && inlineRest.length >= 2 && !isPureLabelLine(inlineRest)) {
+      return { text: inlineRest, confidence: anchor.confidence };
+    }
+
+    for (let offset = 1; offset <= 2; offset++) {
+      const next = normalizedLines[anchorIdx + offset];
+      if (!next) break;
+      const gap = next.yCenter - anchor.yCenter;
+      if (gap > anchor.height * 4.5) break;
+      if (isPureLabelLine(next.text)) continue;
+      return { text: next.text, confidence: next.confidence };
+    }
+    return null;
+  };
+
+  // 2. Ancora COGNOME / SURNAME
+  for (let i = 0; i < normalizedLines.length; i++) {
+    const t = normalizedLines[i].text;
+    if (/\b(COGNOME|SURNAME)\b/.test(t)) {
+      const val = extractValueAfterAnchor(i, [/\bCOGNOME\b/g, /\bSURNAME\b/g]);
+      if (val) {
+        const cleaned = val.text.replace(/[^A-ZÀÈÉÌÒÙ\s'-]/g, '').trim();
+        if (cleaned.length >= 2) {
+          cognome = cleaned;
+          confidences.cognome = val.confidence;
+          break;
+        }
+      }
     }
   }
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if ((line.includes('COGNOME') || line.includes('SURNAME')) && i + 1 < lines.length) {
-      const next = lines[i + 1].replace(/[^A-Z\s']/g, '').trim();
-      if (next && next.length > 1 && !next.includes('NOME') && !next.includes('NAME')) cognome = next;
+  // 3. Ancora NOME / NAME (escludendo COGNOME / SURNAME)
+  for (let i = 0; i < normalizedLines.length; i++) {
+    const t = normalizedLines[i].text;
+    if (/\b(NOME|NAME)\b/.test(t) && !/\b(COGNOME|SURNAME)\b/.test(t)) {
+      const val = extractValueAfterAnchor(i, [/\bNOME\b/g, /\bNAME\b/g]);
+      if (val) {
+        const cleaned = val.text.replace(/[^A-ZÀÈÉÌÒÙ\s'-]/g, '').trim();
+        if (cleaned.length >= 2 && cleaned !== cognome) {
+          nome = cleaned;
+          confidences.nome = val.confidence;
+          break;
+        }
+      }
     }
-    if ((line.includes('NOME') || line.includes('NAME')) && !line.includes('COGNOME') && !line.includes('SURNAME') && i + 1 < lines.length) {
-      const next = lines[i + 1].replace(/[^A-Z\s']/g, '').trim();
-      if (next && next.length > 1 && !next.includes('LUOGO') && !next.includes('PLACE')) nome = next;
+  }
+
+  // Helper parsing data GG.MM.AAAA (con tolleranza su separatori . / -)
+  const parseItDateStr = (rawDate) => {
+    const parts = rawDate.split(/[./-]/);
+    if (parts.length !== 3) return null;
+    const dd = parts[0].padStart(2, '0');
+    const mm = parts[1].padStart(2, '0');
+    const yyyy = parts[2];
+    const dNum = parseInt(dd, 10);
+    const mNum = parseInt(mm, 10);
+    const yNum = parseInt(yyyy, 10);
+    if (dNum < 1 || dNum > 31 || mNum < 1 || mNum > 12 || yNum < 1900 || yNum > 2099) return null;
+    return { iso: `${yyyy}-${mm}-${dd}`, year: yNum };
+  };
+
+  // 4. Ancora LUOGO E DATA DI NASCITA / PLACE AND DATE OF BIRTH
+  for (let i = 0; i < normalizedLines.length; i++) {
+    const t = normalizedLines[i].text;
+    if (/\b(LUOGO|NASCITA|PLACE|BIRTH)\b/.test(t)) {
+      const val = extractValueAfterAnchor(i, [
+        /\bLUOGO\s+E\s+DATA\s+DI\s+NASCITA\b/g,
+        /\bPLACE\s+AND\s+DATE\s+OF\s+BIRTH\b/g,
+        /\bLUOGO\b/g, /\bDATA\b/g, /\bDI\b/g, /\bNASCITA\b/g,
+        /\bPLACE\b/g, /\bAND\b/g, /\bDATE\b/g, /\bOF\b/g, /\bBIRTH\b/g
+      ]);
+      if (val) {
+        const dateM = val.text.match(/\b(\d{2}[./-]\d{2}[./-]\d{4})\b/);
+        if (dateM) {
+          const parsedD = parseItDateStr(dateM[1]);
+          if (parsedD) {
+            dataNascitaIso = parsedD.iso;
+            confidences.dataNascita = val.confidence;
+          }
+          const beforeDate = val.text.slice(0, dateM.index).replace(/[^A-ZÀÈÉÌÒÙ\s'()-]/g, '').trim();
+          if (beforeDate.length >= 2) {
+            luogoNascita = beforeDate;
+            confidences.luogoNascita = val.confidence;
+          }
+        } else {
+          const onlyPlace = val.text.replace(/[^A-ZÀÈÉÌÒÙ\s'()-]/g, '').trim();
+          if (onlyPlace.length >= 2) {
+            luogoNascita = onlyPlace;
+            confidences.luogoNascita = val.confidence;
+          }
+        }
+        break;
+      }
     }
-    if ((line.includes('LUOGO') || line.includes('PLACE') || line.includes('NATO')) && i + 1 < lines.length) {
-      const next = lines[i + 1].replace(/[0-9/.-]/g, '').replace(/[^A-Z\s()]/g, '').trim();
-      if (next && next.length > 2) luogoNascita = next.replace(/DATA|NASCITA|DATE|BIRTH/gi, '').trim();
+  }
+
+  // 5. Ancore EMISSIONE / ISSUING e SCADENZA / EXPIRY + raccolta tutte le date GG.MM.AAAA
+  const allDates = [];
+  const dateGlobalRegex = /\b(\d{2}[./-]\d{2}[./-]\d{4})\b/g;
+
+  for (let i = 0; i < normalizedLines.length; i++) {
+    const line = normalizedLines[i];
+    let m;
+    dateGlobalRegex.lastIndex = 0;
+    while ((m = dateGlobalRegex.exec(line.text)) !== null) {
+      const parsedD = parseItDateStr(m[1]);
+      if (parsedD) {
+        allDates.push({
+          ...parsedD,
+          confidence: line.confidence,
+          yCenter: line.yCenter,
+          inLowerHalf: canvasHeight > 0 ? line.yCenter >= canvasHeight * 0.42 : true
+        });
+      }
+    }
+
+    if (/\b(EMISSIONE|ISSUING)\b/.test(line.text) && !dataEmissioneIso) {
+      const val = extractValueAfterAnchor(i, [/\bEMISSIONE\b/g, /\bISSUING\b/g]);
+      if (val) {
+        const dm = val.text.match(/\b(\d{2}[./-]\d{2}[./-]\d{4})\b/);
+        if (dm) {
+          const parsedD = parseItDateStr(dm[1]);
+          if (parsedD) {
+            dataEmissioneIso = parsedD.iso;
+            confidences.dataEmissione = val.confidence;
+          }
+        }
+      }
+    }
+
+    if (/\b(SCADENZA|EXPIRY)\b/.test(line.text) && !dataScadenzaIso) {
+      const val = extractValueAfterAnchor(i, [/\bSCADENZA\b/g, /\bEXPIRY\b/g]);
+      if (val) {
+        const dm = val.text.match(/\b(\d{2}[./-]\d{2}[./-]\d{4})\b/);
+        if (dm) {
+          const parsedD = parseItDateStr(dm[1]);
+          if (parsedD) {
+            dataScadenzaIso = parsedD.iso;
+            confidences.dataScadenza = val.confidence;
+          }
+        }
+      }
+    }
+  }
+
+  // Classificazione cronologica di fallback sulle date rilevate nella metà inferiore
+  if (allDates.length > 0) {
+    const lowerDates = allDates.filter((d) => d.inLowerHalf);
+    const pool = (lowerDates.length > 0 ? lowerDates : allDates).slice().sort((a, b) => a.year - b.year || a.iso.localeCompare(b.iso));
+    const curYear = new Date().getFullYear();
+
+    if (!dataNascitaIso) {
+      const oldest = pool.find((d) => d.year <= curYear - 14);
+      if (oldest) {
+        dataNascitaIso = oldest.iso;
+        confidences.dataNascita = oldest.confidence;
+      }
+    }
+
+    if (!dataScadenzaIso) {
+      const future = pool.slice().reverse().find((d) => d.year >= curYear);
+      if (future) {
+        dataScadenzaIso = future.iso;
+        confidences.dataScadenza = future.confidence;
+      }
+    }
+
+    if (!dataEmissioneIso) {
+      const middle = pool.find((d) => d.iso !== dataNascitaIso && d.iso !== dataScadenzaIso && d.year <= curYear);
+      if (middle) {
+        dataEmissioneIso = middle.iso;
+        confidences.dataEmissione = middle.confidence;
+      }
     }
   }
 
@@ -595,24 +804,38 @@ export function parseDocFrontText(rawText) {
     nome,
     luogoNascita,
     dataNascita: dataNascitaIso,
+    dataEmissione: dataEmissioneIso,
     dataScadenza: dataScadenzaIso,
-    ente: "Ministero dell'Interno"
+    ente: "Ministero dell'Interno",
+    confidences
   };
 }
 
+/**
+ * Wrapper retrocompatibile per testo grezzo suddiviso per righe.
+ */
+export function parseDocFrontText(rawText) {
+  return parseCieFrontLines([], rawText, 0);
+}
+
 /* ==========================================================================
-   PIPELINE OCR MULTI-ZONA (ROI) CON PARAMETRI TESSERACT DINAMICI
+   PIPELINE OCR FULL-CARD (FRONTE) + RETRO MRZ CON PARAMETRI DINAMICI
    ========================================================================== */
 async function recognizeWithParams(worker, canvas, params) {
   await worker.setParameters(params);
   const result = await worker.recognize(canvas);
-  return result && result.data ? (result.data.text || '') : '';
+  const data = (result && result.data) ? result.data : {};
+  return {
+    text: data.text || '',
+    lines: Array.isArray(data.lines) ? data.lines : []
+  };
 }
 
 /**
  * Esegue il riconoscimento ottimizzato su un canvas sorgente:
  * - mode === 'mrz': ritaglia fascia inferiore MRZ + whitelist ICAO + PSM 6 + validazione 7-3-1
- * - mode === 'front': ROI Numero Documento (PSM 7) + ROI Anagrafica Destra (PSM 6) + fallback tessera intera
+ * - mode === 'front': OCR Full-Card su immagine pre-elaborata per CIE (PSM 6, fallback PSM 11)
+ *   leggendo result.data.lines con ancore semantiche e livelli di confidenza.
  */
 export async function recognizeDocumentCanvas(sourceCanvas, mode = 'front', target = 'student') {
   const worker = await getOcrWorker();
@@ -625,19 +848,17 @@ export async function recognizeDocumentCanvas(sourceCanvas, mode = 'front', targ
         tessedit_pageseg_mode: '6'
       };
 
-      // Tentativo 1: ritaglio dedicato fascia MRZ inferiore
       const mrzCrop = cropCanvasRegion(sourceCanvas, { x: 0.02, y: 0.54, w: 0.96, h: 0.44 }, 14);
       const mrzProcessed = preprocessCardImage(mrzCrop, { thresholdSensitivity: 0.13 });
-      const mrzText = await recognizeWithParams(worker, mrzProcessed, mrzParams);
-      const parsedCrop = parseMrzText(mrzText);
+      const mrzRes = await recognizeWithParams(worker, mrzProcessed, mrzParams);
+      const parsedCrop = parseMrzText(mrzRes.text);
       if (parsedCrop) {
         return { data: parsedCrop, sourceLabel: parsedCrop.mrzVerified ? 'MRZ (Checksum ICAO OK)' : 'MRZ' };
       }
 
-      // Tentativo 2: intera immagine pre-elaborata (es. foto caricata da file con inquadratura ampia)
       const fullProcessed = preprocessCardImage(sourceCanvas, { thresholdSensitivity: 0.13 });
-      const fullText = await recognizeWithParams(worker, fullProcessed, mrzParams);
-      const parsedFull = parseMrzText(fullText);
+      const fullRes = await recognizeWithParams(worker, fullProcessed, mrzParams);
+      const parsedFull = parseMrzText(fullRes.text);
       if (parsedFull) {
         return { data: parsedFull, sourceLabel: parsedFull.mrzVerified ? 'MRZ (Checksum ICAO OK)' : 'MRZ' };
       }
@@ -645,72 +866,52 @@ export async function recognizeDocumentCanvas(sourceCanvas, mode = 'front', targ
       return null;
     }
 
-    // Modalità 'front': Pipeline ROI dedicata al Fronte Documento
-    let docNumFromRoi = '';
-    if (target === 'student') {
-      const docCrop = cropCanvasRegion(sourceCanvas, { x: 0.52, y: 0.05, w: 0.46, h: 0.19 }, 14);
-      const docProcessed = preprocessCardImage(docCrop, { thresholdSensitivity: 0.14 });
-      const docText = await recognizeWithParams(worker, docProcessed, {
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-        tessedit_pageseg_mode: '7'
-      });
-      const parsedDoc = parseDocFrontText(docText);
-      if (parsedDoc.docNum) docNumFromRoi = parsedDoc.docNum;
-    }
+    // Modalità 'front': Full-Card OCR sull'intera immagine pre-elaborata (indipendente da sub-box rigidi)
+    const processedFull = preprocessCardImage(sourceCanvas, { thresholdSensitivity: 0.15 });
+    const frontWhitelist = "ABCDEFGHIJKLMNOPQRSTUVWXYZÀÈÉÌÒÙ0123456789./- ()'";
 
-    // Passaggio 2: Zona Anagrafica Destra (esclude fototessera a sinistra e banda superiore)
-    const anagCrop = cropCanvasRegion(sourceCanvas, { x: 0.30, y: 0.18, w: 0.68, h: 0.70 }, 12);
-    const anagProcessed = preprocessCardImage(anagCrop, { thresholdSensitivity: 0.14 });
-    const anagWhitelist = target === 'visitor'
-      ? "ABCDEFGHIJKLMNOPQRSTUVWXYZ '"
-      : "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.- '()";
-
-    const anagText = await recognizeWithParams(worker, anagProcessed, {
-      tessedit_char_whitelist: anagWhitelist,
+    const psm6Res = await recognizeWithParams(worker, processedFull, {
+      tessedit_char_whitelist: frontWhitelist,
       tessedit_pageseg_mode: '6'
     });
 
-    const parsedAnag = parseDocFrontText(anagText);
-    if (docNumFromRoi && !parsedAnag.docNum) {
-      parsedAnag.docNum = docNumFromRoi;
-    }
-
-    if (parsedAnag.cognome && parsedAnag.nome) {
-      return { data: parsedAnag, sourceLabel: 'Fronte ROI' };
-    }
-
-    // Passaggio 3: Fallback tessera intera (es. Patente, Carta Cartacea o MRZ inquadrato per sbaglio in modalità Fronte)
-    const fullProcessed = preprocessCardImage(sourceCanvas, { thresholdSensitivity: 0.14 });
-    const fullText = await recognizeWithParams(worker, fullProcessed, {
-      tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789< /.-'()",
-      tessedit_pageseg_mode: '6'
-    });
-
-    if (fullText.includes('<<')) {
-      const autoMrz = parseMrzText(fullText);
+    if (psm6Res.text.includes('<<')) {
+      const autoMrz = parseMrzText(psm6Res.text);
       if (autoMrz) {
         return { data: autoMrz, sourceLabel: autoMrz.mrzVerified ? 'MRZ (Checksum ICAO OK)' : 'MRZ' };
       }
     }
 
-    const parsedFull = parseDocFrontText(fullText);
-    const merged = {
-      ...parsedFull,
-      docNum: parsedAnag.docNum || docNumFromRoi || parsedFull.docNum,
-      cognome: parsedAnag.cognome || parsedFull.cognome,
-      nome: parsedAnag.nome || parsedFull.nome,
-      luogoNascita: parsedAnag.luogoNascita || parsedFull.luogoNascita,
-      dataNascita: parsedAnag.dataNascita || parsedFull.dataNascita,
-      dataScadenza: parsedAnag.dataScadenza || parsedFull.dataScadenza
-    };
+    let parsed = parseCieFrontLines(psm6Res.lines, psm6Res.text, processedFull.height);
 
-    if (merged.cognome || merged.nome || merged.docNum || merged.dataNascita) {
-      return { data: merged, sourceLabel: 'Fronte' };
+    // Se PSM 6 ha mancato cognome/nome (o numero doc in flusso alunni), secondo passaggio Full-Card con PSM 11 (Sparse text)
+    const needsSparsePass = !parsed.cognome || !parsed.nome || (target === 'student' && !parsed.docNum);
+    if (needsSparsePass) {
+      const psm11Res = await recognizeWithParams(worker, processedFull, {
+        tessedit_char_whitelist: frontWhitelist,
+        tessedit_pageseg_mode: '11'
+      });
+
+      const sparseParsed = parseCieFrontLines(psm11Res.lines, psm11Res.text, processedFull.height);
+      const mergedConfidences = { ...sparseParsed.confidences, ...parsed.confidences };
+
+      for (const key of ['docNum', 'cognome', 'nome', 'luogoNascita', 'dataNascita', 'dataEmissione', 'dataScadenza']) {
+        if (!parsed[key] && sparseParsed[key]) {
+          parsed[key] = sparseParsed[key];
+          if (sparseParsed.confidences[key] !== undefined) {
+            mergedConfidences[key] = sparseParsed.confidences[key];
+          }
+        }
+      }
+      parsed.confidences = mergedConfidences;
+    }
+
+    if (parsed.cognome || parsed.nome || parsed.docNum || parsed.dataNascita) {
+      return { data: parsed, sourceLabel: 'Fronte CIE (Full-Card)' };
     }
 
     return null;
   } finally {
-    // Ripristina i parametri standard del worker riutilizzabile
     try {
       await worker.setParameters({
         tessedit_char_whitelist: '',

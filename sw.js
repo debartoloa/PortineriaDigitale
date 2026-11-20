@@ -9,7 +9,7 @@
  *   dopo il primo caricamento.
  */
 
-const CACHE_VERSION = 'v1.1.1';
+const CACHE_VERSION = 'v1.2.0';
 const STATIC_CACHE = `portineria-static-${CACHE_VERSION}`;
 const OCR_CACHE = `portineria-ocr-${CACHE_VERSION}`;
 
